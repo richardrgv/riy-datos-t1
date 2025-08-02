@@ -1,0 +1,184 @@
+/* App.css */
+
+/* Estilos globales y reseteos básicos */
+:root {
+  font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 400;
+
+  color: #0f0f0f;
+  background-color: #f6f6f6; /* Fondo general claro */
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Estilos del layout central (similares a container de Vite, pero con nuestros nombres) */
+.credential-screen-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh; /* Ocupa al menos toda la altura de la vista */
+  background-color: #f3f4f6; /* Color de fondo gris claro para el cuerpo */
+  padding: 16px; /* Espaciado alrededor del contenido principal */
+}
+
+/* Estilo para el recuadro del formulario (la "tarjeta") */
+.credential-form-card {
+  padding: 32px; /* Espaciado interno */
+  background-color: #ffffff; /* Fondo blanco */
+  border-radius: 8px; /* Bordes redondeados */
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* Sombra pronunciada */
+  width: 100%; /* Ocupa todo el ancho disponible */
+  max-width: 448px; /* Ancho máximo para el formulario (tamaño de un móvil grande/tablet pequeña) */
+}
+
+/* Estilo para el título del formulario */
+.credential-title {
+  font-size: 24px; /* Tamaño de fuente grande */
+  font-weight: bold; /* Negrita */
+  margin-bottom: 24px; /* Espacio debajo del título */
+  text-align: center;
+  color: #1f2937; /* Color de texto oscuro */
+}
+
+/* Estilos para los grupos de campos (cada sección de label + input/p/textarea) */
+.form-group {
+  width: 100%; /* Asegura que el grupo ocupe todo el ancho */
+  margin-bottom: 16px; /* Espacio entre los grupos de campos */
+}
+
+/* Estilo para las etiquetas (labels) de los campos */
+.form-label {
+  display: block; /* Para que la etiqueta esté en su propia línea */
+  color: #374151; /* Color de texto gris oscuro */
+  font-size: 14px; /* Tamaño de fuente pequeño */
+  font-weight: 600; /* Semi-negrita */
+  margin-bottom: 4px; /* Pequeño espacio entre la etiqueta y el campo */
+}
+
+/* Estilos base para INPUTS y TEXTAREAS */
+.form-input,
+.form-textarea {
+  display: block; /* Ocupa todo el ancho disponible */
+  width: 100%; /* Ancho completo */
+  padding: 8px 12px; /* Espaciado interno */
+  color: #374151; /* Color de texto */
+  line-height: 1.5; /* Altura de línea */
+  border: 1px solid #d1d5db; /* Borde gris claro */
+  border-radius: 6px; /* Bordes redondeados */
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); /* Sombra sutil */
+  outline: none; /* Quita el contorno por defecto al enfocar */
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out; /* Transición suave al enfocar */
+  font-family: inherit; /* Hereda la fuente global */
+  font-size: 1em; /* Hereda el tamaño de fuente base */
+}
+
+/* Estilo al enfocar (focus) los inputs y textareas */
+.form-input:focus,
+.form-textarea:focus {
+  border-color: #3b82f6; /* Borde azul al enfocar */
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5); /* Anillo de enfoque azul */
+}
+
+/* Estilo específico para textarea */
+.form-textarea {
+    resize: vertical; /* Permite redimensionar solo verticalmente */
+    min-height: 128px; /* Altura mínima */
+}
+
+/* Estilos para campos de solo lectura (como Servidor y Base de Datos) */
+.form-read-only {
+  display: block; /* Para que ocupe toda la línea */
+  width: 100%; /* Ancho completo */
+  padding: 8px 12px; /* Espaciado interno */
+  color: #1f2937; /* Color de texto oscuro */
+  background-color: #f5f5f5; /* Fondo gris claro */
+  border-radius: 6px; /* Bordes redondeados */
+  border: 1px solid #d1d5db; /* Borde sutil */
+  line-height: 1.5;
+  /* Estos campos no necesitan interactividad, no hay outline o transiciones de focus */
+}
+
+/* Estilos para el botón de acción */
+.form-button {
+  display: block; /* Ocupa toda la línea */
+  width: 100%; /* Ancho completo */
+  padding: 8px 16px; /* Espaciado interno */
+  background-color: #2563eb; /* Color de fondo azul */
+  color: white; /* Color de texto blanco */
+  font-weight: bold; /* Negrita */
+  border: none; /* Sin borde */
+  border-radius: 6px; /* Bordes redondeados */
+  cursor: pointer; /* Cursor de puntero */
+  transition: background-color 0.15s ease-in-out; /* Transición suave del color de fondo */
+  outline: none; /* Quita el contorno por defecto */
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); /* Sombra sutil */
+  font-family: inherit; /* Hereda la fuente global */
+  font-size: 1em; /* Hereda el tamaño de fuente base */
+}
+
+/* Estilo al pasar el ratón por encima del botón */
+.form-button:hover {
+  background-color: #1d4ed8; /* Azul más oscuro al pasar el ratón */
+}
+
+/* Estilo para el botón deshabilitado */
+.form-button:disabled {
+  opacity: 0.7; /* Menos opaco */
+  cursor: not-allowed; /* Cursor de "no permitido" */
+}
+
+/* Estilo para el mensaje de error */
+.form-error-message {
+  color: #ef4444; /* Color rojo */
+  font-size: 14px; /* Tamaño de fuente pequeño */
+  margin-top: 8px; /* Espacio arriba del mensaje */
+  margin-bottom: 16px; /* Espacio debajo del mensaje */
+}
+
+/* Estilos para el modo oscuro (si lo deseas implementar) */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color: #f6f6f6;
+    background-color: #2f2f2f;
+  }
+  .credential-screen-container {
+    background-color: #1a1a1a;
+  }
+  .credential-form-card {
+    background-color: #2c2c2c;
+  }
+  .credential-title {
+    color: #f6f6f6;
+  }
+  .form-label {
+    color: #d1d5db;
+  }
+  .form-input,
+  .form-textarea {
+    background-color: #3e3e3e;
+    color: #f6f6f6;
+    border-color: #555555;
+  }
+  .form-input:focus,
+  .form-textarea:focus {
+    border-color: #60a5fa;
+    box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.5);
+  }
+  .form-read-only {
+    background-color: #3e3e3e;
+    color: #f6f6f6;
+    border-color: #555555;
+  }
+  .form-button {
+    background-color: #60a5fa;
+  }
+  .form-button:hover {
+    background-color: #3b82f6;
+  }
+}
