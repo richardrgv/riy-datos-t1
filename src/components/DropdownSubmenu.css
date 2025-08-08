@@ -1,0 +1,17 @@
+/* src/components/DropdownSubmenu.css */
+.submenu-container {
+  margin-bottom: 1rem;
+}
+
+.submenu-select {
+  padding: 0.5rem;
+  font-size: 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.25rem;
+  background-color: white;
+  cursor: pointer;
+}
+
+.submenu-content {
+  margin-top: 1rem;
+}

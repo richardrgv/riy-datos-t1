@@ -173,7 +173,7 @@ pub async fn check_license_status_command(state: State<'_, AppState>) -> Result<
 pub async fn save_license_credentials_command(
     state: State<'_, AppState>,
     encrypted_credentials_from_user: String,
-    _expiration_date_for_hash: String,
+   //_expiration_date_for_hash: String,
 ) -> Result<bool, String> {
 
     let sql_collate_clause_ref: &str = &state.sql_collate_clause;
@@ -274,7 +274,13 @@ pub async fn save_license_credentials_command(
 
     if existing_license_row_option.is_some() {
         query(
-            "UPDATE riy.riy_licencia SET fechaCaducidad = @p1, credencial_encriptada = @p2, hash_licencia_hex = @p3 WHERE aplicativoID = @p4 AND nombreServidor = @p5 AND baseDatos = @p6"
+            "UPDATE riy.riy_licencia 
+                SET fechaCaducidad = @p1, 
+                credencial_encriptada = @p2, 
+                hash_licencia_hex = @p3 
+             WHERE aplicativoID = @p4 
+               AND nombreServidor = @p5 
+               AND baseDatos = @p6"
         )
         .bind(&expiration_date_str)
         .bind(&encrypted_credentials_from_user)

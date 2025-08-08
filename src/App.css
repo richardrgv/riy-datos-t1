@@ -182,3 +182,24 @@
     background-color: #3b82f6;
   }
 }
+
+/* Estilo para el título de error */
+.app-error-title {
+  color: #dc2626; /* Rojo oscuro */
+}
+
+/* Estilo para el texto de error secundario */
+.app-error-text {
+  margin-top: 1rem; /* Espacio arriba */
+  font-size: 0.875rem; /* Tamaño de fuente pequeño */
+  color: #6b7280; /* Gris */
+}
+
+/* Estilo para el contenedor de carga/error */
+.app-loading-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background-color: #f3f4f6; /* Color de fondo gris claro */
+}

@@ -1,13 +1,17 @@
+// src/components/LoginScreen.tsx
 import { useState } from 'react';
 import { invoke } from '@tauri-apps/api/tauri';
 import { appWindow } from '@tauri-apps/api/window';
+import { useUser, LoggedInUser } from '../contexts/UserContext';
+import './LoginScreen.css';
 
 interface LoginScreenProps {
   onLoginSuccess: () => void;
 }
 
 function LoginScreen({ onLoginSuccess }: LoginScreenProps): JSX.Element {
-  const [username, setUsername] = useState<string>(''); 
+  const { setUser } = useUser();
+  const [username, setUsername] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
@@ -15,31 +19,35 @@ function LoginScreen({ onLoginSuccess }: LoginScreenProps): JSX.Element {
   const handleLogin = async (): Promise<void> => {
     setLoading(true);
     setErrorMessage('');
+
     try {
-      const success = await invoke<boolean>('user_login', { username, password });
-      if (success) {
-        onLoginSuccess();
+      // El comando de Rust ahora devuelve un objeto de usuario o null
+      const result = await invoke<LoggedInUser | null>('user_login', { username, password });
+
+      if (result) {
+        // Si el login fue exitoso, guardamos el usuario en el contexto
+        setUser(result);
+        onLoginSuccess(); // Y navegamos a la siguiente pantalla
       } else {
         setErrorMessage('Usuario o contraseña incorrectos.');
       }
     } catch (error: any) {
-        console.error('Error en el login:', error);
-        setErrorMessage(error.message || 'Error desconocido al intentar iniciar sesión.');
+      console.error('Error en el login:', error);
+      setErrorMessage(error.message || 'Error desconocido al intentar iniciar sesión.');
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   };
 
   const handleExit = () => {
-    // Cierra la ventana de la aplicación
     appWindow.close();
   };
 
   return (
-    <div className="credential-screen-container">
-      <div className="credential-form-card">
-        <h2 className="credential-title">Iniciar Sesión</h2>
-        <div className="p-8 bg-white rounded w-96">
+    <div className="login-screen-container">
+      <div className="login-form-card">
+        <h2 className="login-title">Iniciar Sesión</h2>
+        <div className="form-content">
           <div className="form-group">
             <label className="form-label" htmlFor="username">Usuario</label>
             <input
@@ -65,9 +73,9 @@ function LoginScreen({ onLoginSuccess }: LoginScreenProps): JSX.Element {
           {errorMessage && (
             <p className="form-error-message">{errorMessage}</p>
           )}
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '15px' }}>
+          <div className="form-button-group">
             <button
-              className="form-button bg-blue-600 hover:bg-blue-700 w-full"
+              className="form-button primary"
               type="button"
               onClick={handleLogin}
               disabled={loading}
@@ -75,7 +83,7 @@ function LoginScreen({ onLoginSuccess }: LoginScreenProps): JSX.Element {
               {loading ? 'Iniciando...' : 'Entrar'}
             </button>
             <button
-              className="form-button bg-gray-500 hover:bg-gray-600 w-full"
+              className="form-button secondary"
               type="button"
               onClick={handleExit}
               disabled={loading}

@@ -1,0 +1,63 @@
+/* src/pages/ListaDeUsuariosContent.css */
+
+.user-list-container {
+  padding: 20px;
+  font-family: Arial, sans-serif;
+}
+
+.user-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+
+.user-table th, .user-table td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: left;
+}
+
+.user-table th {
+  background-color: #f2f2f2;
+  font-weight: bold;
+}
+
+.user-table tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+.user-table tr:hover {
+  background-color: #f1f1f1;
+}
+
+.user-table button {
+  padding: 5px 10px;
+  cursor: pointer;
+}
+
+.error {
+  color: red;
+  font-weight: bold;
+}
+
+/* Estilos para el botón de "Agregar Usuario" */
+.add-user-button {
+    padding: 10px 20px;
+    font-size: 16px;
+    font-weight: bold;
+    color: white;
+    background-color: #007bff; /* Un azul primario */
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    transition: background-color 0.3s ease;
+}
+
+.add-user-button:hover {
+    background-color: #0056b3; /* Un azul más oscuro al pasar el ratón */
+}
+
+.add-user-button:active {
+    background-color: #004494; /* Aún más oscuro al hacer clic */
+}

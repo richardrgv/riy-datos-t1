@@ -1,3 +1,5 @@
+// src-tauri/src/main.rs
+
 use dotenv::dotenv;
 use tauri::{Manager, State};
 use sqlx::{Pool, Mssql};
@@ -8,9 +10,26 @@ use std::sync::Arc;
 use crate::license::{save_license_credentials_command, check_license_status_command};
 use crate::db::{get_db_connection_info};
 
+// Importa el comando específico del módulo `user`
+use crate::user::{
+    get_users,
+    add_user_from_erp,
+    search_erp_users,
+    update_user
+};
+
+
 mod auth;
 mod db;
 mod license;
+mod models; // <-- Declara el nuevo módulo
+mod user; // <-- Declara el nuevo módulo
+
+use models::Usuario; // <-- Importa la estructura Usuario desde el módulo
+use serde::{Serialize, Deserialize}; // Asegúrate de que esta línea esté aquí
+
+use crate::models::LoggedInUser; // Asegúrate de tener este import
+//use crate::auth; // Asegúrate de tener este import
 
 pub struct AppState {
     pub db_pool: Mutex<Option<Pool<Mssql>>>,
@@ -21,7 +40,10 @@ pub struct AppState {
     pub sql_collate_clause: String,
     pub aplicativo: String,
     pub auth_method: String, // <- Nuevo campo para el método de autenticación
+    pub usuario_conectado: Mutex<Option<LoggedInUser>>, // <-- NUEVO: Para guardar el usuario logueado
+    
 }
+
 
 #[tokio::main]
 async fn main() {
@@ -39,11 +61,9 @@ async fn main() {
     };
     let db_url = std::env::var(db_url_key).expect(&format!("{} debe estar configurado.", db_url_key));
 
-    // --- NUEVO: Leer el método de autenticación ---
     let auth_method = std::env::var("AUTH_METHOD").unwrap_or_else(|_| "DEFAULT".to_string());
     
 
-    // --- CORRECCIÓN CLAVE: Inicializar el pool de forma síncrona antes de la aplicación ---
     let pool = db::connect_db(&db_url).await
         .map_err(|e| {
             eprintln!("Fallo al conectar a la base de datos: {:?}", e);
@@ -66,7 +86,8 @@ async fn main() {
         aplicativo_id: Mutex::new(app_id_value),
         sql_collate_clause,
         aplicativo: app_code,
-        auth_method, // <- Pasar el método de autenticación al estado
+        auth_method, 
+        usuario_conectado: Mutex::new(None), // <-- Se inicializa como None
     };
 
     tauri::Builder::default()
@@ -76,33 +97,41 @@ async fn main() {
         })
         .manage(initial_state)
         .invoke_handler(tauri::generate_handler![
-            user_login, // Corregido: user_login en auth.rs
+            user_login, // Corregido: user_login en user.rs
             save_license_credentials_command,
             check_license_status_command,
             get_db_connection_info,
+            get_users, // <-- Llama al comando desde el nuevo módulo user
+            add_user_from_erp,
+            search_erp_users,
+            update_user
         ])
         .run(tauri::generate_context!())
         .expect("error al ejecutar la aplicación Tauri");
 }
 
 #[tauri::command]
-async fn user_login(state: State<'_, AppState>, username: String, password: String) -> Result<bool, String> {
-    let pool = {
-        let pool_guard = state.db_pool.lock().await;
-        pool_guard.as_ref().ok_or("Database pool not initialized".to_string())?.clone()
-    };
+async fn user_login(
+    state: tauri::State<'_, AppState>,
+    username: String,
+    password: String,
+) -> Result<Option<LoggedInUser>, String> {
+    let pool_guard = state.db_pool.lock().await;
+    let pool = pool_guard.as_ref().ok_or("El pool de la base de datos no está inicializado".to_string())?;
     
-    let auth_method = state.auth_method.clone();
-    let sql_collate_clause = state.sql_collate_clause.clone();
+    let auth_method = &state.auth_method;
+    let sql_collate_clause_ref = &state.sql_collate_clause;
 
-    // --- LÓGICA CONDICIONAL DE AUTENTICACIÓN ---
-    let is_valid = match auth_method.as_str() {
-        "ERP" => auth::authenticate_erp_user(&pool, &username, &password, &sql_collate_clause).await,
+    let auth_result = match auth_method.as_str() {
+        "ERP" => auth::authenticate_erp_user(&pool, &username, &password, sql_collate_clause_ref).await,
         _ => auth::authenticate_user(&pool, &username, &password).await,
     };
     
-    match is_valid {
-        Ok(is_valid) => Ok(is_valid),
-        Err(e) => Err(format!("Login failed: {}", e)),
+    // Si la autenticación es exitosa, guardamos el usuario en el estado
+    if let Ok(Some(usuario_conectado)) = &auth_result {
+        let mut user_state_guard = state.usuario_conectado.lock().await;
+        *user_state_guard = Some(usuario_conectado.clone());
     }
+
+    auth_result
 }

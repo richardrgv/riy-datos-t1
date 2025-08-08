@@ -1,0 +1,115 @@
+/* src/components/DataForm.css */
+/* Estilos para el fondo semitransparente del modal */
+.modal-backdrop {
+  position: fixed; /* <-- CORRECCIÓN: Posición fija para cubrir la ventana */
+  top: 0; /* <-- CORRECCIÓN: Inicia desde la parte superior */
+  left: 0; /* <-- CORRECCIÓN: Inicia desde el lado izquierdo */
+  width: 100%; /* <-- CORRECCIÓN: Ancho completo de la ventana */
+  height: 100%; /* <-- CORRECCIÓN: Altura completa de la ventana */
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center; /* Centrar horizontalmente */
+  align-items: center; /* Centrar verticalmente */
+  z-index: 1000;
+}
+
+
+
+/* Estilos para la tarjeta del formulario */
+.data-form-card {
+  background-color: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  width: 80%;
+  max-width: 600px; /* <-- CAMBIAMOS el ancho máximo aquí */
+}
+
+h2 {
+text-align: center;
+margin-bottom: 20px;
+color: #333;
+}
+
+.form-field {
+margin-bottom: 15px;
+}
+
+.form-field label {
+display: block;
+margin-bottom: 5px;
+color: #555;
+font-weight: bold;
+}
+
+.form-field input {
+width: calc(100% - 12px);
+padding: 8px;
+border: 1px solid #ccc;
+border-radius: 4px;
+font-size: 16px;
+}
+
+.form-actions {
+display: flex;
+justify-content: flex-end;
+gap: 10px;
+margin-top: 20px;
+}
+
+.form-actions button {
+padding: 10px 15px;
+border: none;
+border-radius: 4px;
+cursor: pointer;
+font-size: 16px;
+}
+
+.form-actions button[type="submit"] {
+background-color: #007bff;
+color: white;
+}
+
+.form-actions button[type="button"] {
+background-color: #6c757d;
+color: white;
+}
+
+
+
+.error-message {
+  color: #a94442; /* Color de texto rojo oscuro */
+  background-color: #f2dede; /* Fondo rojo claro */
+  border: 1px solid #ebccd1; /* Borde sutil */
+  padding: 10px;
+  border-radius: 4px;
+  margin-bottom: 15px; /* Espacio debajo del mensaje */
+  text-align: center;
+  font-weight: bold;
+}
+
+
+.data-form-card select {
+width: calc(100% - 12px); /* Considera el padding */
+padding: 8px;
+border: 1px solid #ccc;
+border-radius: 4px;
+font-size: 16px;
+background-color: white; /* Asegura un fondo blanco */
+color: #333;
+/* Estilo opcional para la flecha (puede variar según el navegador) 
+-webkit-appearance: none; / Elimina el estilo nativo en navegadores WebKit /
+-moz-appearance: none; / Elimina el estilo nativo en Firefox /
+appearance: none; / Elimina el estilo nativo en otros navegadores /
+background-image: url('data:image/svg+xml;utf8,<svg fill="#333" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/><path d="M0 0h24v24H0z" fill="none"/></svg>');
+background-repeat: no-repeat;
+background-position-x: calc(100% - 8px);
+background-position-y: 50%;
+padding-right: 25px; Espacio para la flecha */
+}
+
+.data-form-card select:focus {
+border-color: #007bff; /* Cambia el color del borde al enfocar /
+outline: none; / Elimina el outline predeterminado del navegador /
+box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25); / Añade una sombra suave al enfocar */
+}

@@ -1,0 +1,46 @@
+/* src/components/Tabs.css */
+.tab-container {
+  display: flex;
+  border-bottom: 2px solid #e5e7eb;
+  margin-bottom: 1rem;
+  
+  overflow-x: auto;
+  white-space: nowrap;
+  
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.tab-container::-webkit-scrollbar {
+  display: none;
+}
+
+.tab-button {
+  padding: 0.75rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #6b7280;
+  background-color: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+.tab-button:hover {
+  color: #1f2937;
+  border-bottom-color: #d1d5db;
+}
+
+.tab-button.active {
+  color: #3b82f6;
+  border-bottom-color: #3b82f6;
+  font-weight: bold;
+}
+
+.tab-content {
+  padding: 1rem 0;
+}
