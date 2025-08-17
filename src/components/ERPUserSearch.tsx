@@ -1,8 +1,9 @@
 // src/components/ERPUserSearch.tsx
 import React, { useState } from 'react';
-import { invoke } from '@tauri-apps/api/tauri';
+//import { invoke } from '@tauri-apps/api/tauri';
 import { UserSearchResult } from '../types/user'; // Asegúrate de que exista este tipo
 import './ERPUserSearch.css';
+import { searchErpUsers } from '../utils/api-service'; // <-- Importa la función del servicio de API
 
 interface ERPUserSearchProps {
   onUserSelected: (user: UserSearchResult) => void;
@@ -17,13 +18,14 @@ const ERPUserSearch: React.FC<ERPUserSearchProps> = ({ onUserSelected, onCancel 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (searchTerm.trim() === '') return;
-    
+
     setIsLoading(true);
     try {
-      const users = await invoke<UserSearchResult[]>('search_erp_users', { searchTerm });
+      // Usa la función de la API que maneja tanto Tauri como la web
+      const users = await searchErpUsers(searchTerm);
       setResults(users);
     } catch (error) {
-      console.error('Error searching ERP users:', error);
+      console.error('Error al buscar usuarios del ERP:', error);
     } finally {
       setIsLoading(false);
     }

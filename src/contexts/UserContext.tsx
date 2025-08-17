@@ -1,26 +1,44 @@
-// src/contexts/UserContext.tsx
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+// UserContext.tsx
 
-// Define la interfaz del usuario conectado
-export interface LoggedInUser {
-  usuario: string;
-  nombre: string;
-  // Puedes añadir más campos como rol, etc.
-}
+// Importa useState y ReactNode
+import { createContext, useContext, useState, ReactNode } from 'react';
+import { LoggedInUser } from '../../src-tauri/src/shared/models';
+
+
 
 interface UserContextType {
   user: LoggedInUser | null;
-  setUser: (user: LoggedInUser | null) => void;
+  token: string | null;
+  permissions: string[]; // <--- Agrega la propiedad de permisos
+  login: (userData: LoggedInUser, userPermissions: string[], userToken: string) => void;
+  logout: () => void;
+  setPermissions: (newPermissions: string[]) => void; // <--- Agrega la función setPermissions
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
-export const UserProvider = ({ children }: { ReactNode }) => {
-  // El estado inicial es null, indicando que no hay un usuario conectado
+export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<LoggedInUser | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [permissions, setPermissions] = useState<string[]>([]); // <--- Crea el estado de permisos
+
+  const login = (userData: LoggedInUser, userPermissions: string[], userToken: string) => {
+    setUser(userData);
+    setToken(userToken);
+    setPermissions(userPermissions); // <--- Llama a la función setPermissions aquí
+  };
+
+  const logout = () => {
+    setUser(null);
+    setToken(null);
+    setPermissions([]);
+  };
+
+  // ⚠️ Asegúrate de que `setPermissions` esté en el objeto de valor del proveedor
+  const value = { user, token, permissions, login, logout, setPermissions };
 
   return (
-    <UserContext.Provider value={{ user, setUser }}>
+    <UserContext.Provider value={value}>
       {children}
     </UserContext.Provider>
   );
@@ -29,7 +47,7 @@ export const UserProvider = ({ children }: { ReactNode }) => {
 export const useUser = () => {
   const context = useContext(UserContext);
   if (context === undefined) {
-    throw new Error('useUser debe ser usado dentro de un UserProvider');
+    throw new Error('useUser must be used within a UserProvider');
   }
   return context;
 };

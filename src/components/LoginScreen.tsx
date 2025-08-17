@@ -1,33 +1,47 @@
 // src/components/LoginScreen.tsx
 import { useState } from 'react';
-import { invoke } from '@tauri-apps/api/tauri';
+import { userLogin } from '../utils/api-service';
 import { appWindow } from '@tauri-apps/api/window';
-import { useUser, LoggedInUser } from '../contexts/UserContext';
+import { useUser } from '../contexts/UserContext'; // <-- Tu hook personalizado
 import './LoginScreen.css';
 
+// Las props de este componente ya no serán necesarias
 interface LoginScreenProps {
   onLoginSuccess: () => void;
 }
 
 function LoginScreen({ onLoginSuccess }: LoginScreenProps): JSX.Element {
-  const { setUser } = useUser();
-  const [username, setUsername] = useState<string>('');
-  const [password, setPassword] = useState<string>('');
+  // Ahora, en lugar de setUser, necesitas la función de login del contexto que maneja todo.
+  // Tu hook 'useUser' debe proveer esta función.
+  const { login } = useUser(); 
+  
+  const [credentials, setCredentials] = useState({ usuario: '', password: '' });
   const [loading, setLoading] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setCredentials({ ...credentials, [e.target.name]: e.target.value });
+  };
 
   const handleLogin = async (): Promise<void> => {
     setLoading(true);
     setErrorMessage('');
 
     try {
-      // El comando de Rust ahora devuelve un objeto de usuario o null
-      const result = await invoke<LoggedInUser | null>('user_login', { username, password });
+      // 1. Llama a la API
+      const result = await userLogin(credentials);
 
+      // 2. Si el login fue exitoso...
       if (result) {
-        // Si el login fue exitoso, guardamos el usuario en el contexto
-        setUser(result);
-        onLoginSuccess(); // Y navegamos a la siguiente pantalla
+        // Desglosa el objeto 'result' para obtener los 3 argumentos
+        const { user, permissions, token } = result;
+
+        // ...y pásalos por separado a la función 'login' del contexto.
+        login(user, permissions, token);
+
+        // 3. Ya no necesitas onLoginSuccess, ya que el contexto
+        // ahora maneja el estado de la aplicación.
+        onLoginSuccess();
       } else {
         setErrorMessage('Usuario o contraseña incorrectos.');
       }
@@ -49,13 +63,14 @@ function LoginScreen({ onLoginSuccess }: LoginScreenProps): JSX.Element {
         <h2 className="login-title">Iniciar Sesión</h2>
         <div className="form-content">
           <div className="form-group">
-            <label className="form-label" htmlFor="username">Usuario</label>
+            <label className="form-label" htmlFor="usuario">Usuario</label>
             <input
               className="form-input"
-              id="username"
+              id="usuario"
               type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              name="usuario" // Asegúrate de que los campos tengan un nombre
+              value={credentials.usuario}
+              onChange={handleInputChange}
               disabled={loading}
             />
           </div>
@@ -65,8 +80,9 @@ function LoginScreen({ onLoginSuccess }: LoginScreenProps): JSX.Element {
               className="form-input"
               id="password"
               type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              name="password" // Asegúrate de que los campos tengan un nombre
+              value={credentials.password}
+              onChange={handleInputChange}
               disabled={loading}
             />
           </div>

@@ -9,16 +9,25 @@
 */
 
 use tauri::State;
-use sqlx::{query_as, query, Row, Mssql, Pool};
+use sqlx::{query};
 use aes_gcm::{Aes256Gcm, Key, Nonce};
 use aes_gcm::aead::{Aead, KeyInit};
 use base64::{engine::general_purpose, Engine as _};
 use hex;
-use chrono::{NaiveDate, NaiveDateTime, Utc};
+use chrono::{NaiveDate, Utc};
 use serde::{Serialize, Deserialize};
 
 use crate::db;
 use crate::AppState;
+
+//use crate::shared::license_logic;
+//use crate::shared::models::{AppState, LicenseCheckResult};
+// Usa una ruta relativa para acceder a los otros módulos en la misma carpeta
+use shared_lib::license_logic;
+use shared_lib::db::normalize_server_name;
+
+// Importa el struct LicenseCheckResult desde la librería compartida
+use shared_lib::license_logic::{LicenseCheckResult};
 
 #[derive(Debug, Serialize, Deserialize)]
 struct LicenseData {
@@ -27,25 +36,30 @@ struct LicenseData {
     credencial_encriptada: String,
 }
 
-#[derive(Debug, Serialize)]
-pub enum LicenseStatus {
-    Valid,
-    Expired,
-    NotFound,
-    InvalidHash,
-    Corrupted,
-}
 
-#[derive(Debug, Serialize)]
-pub struct LicenseCheckResult {
-    pub status: LicenseStatus,
-    pub message: String,
-}
 
 /// ----------------------------------------------------------------------------------
 /// COMANDO: check_license_status_command
 /// Verifica la validez y vigencia de la licencia consultando la DB.
 /// ----------------------------------------------------------------------------------
+#[tauri::command]
+pub async fn check_license_status_command(state: State<'_, AppState>) -> Result<LicenseCheckResult, String> {
+    let pool_guard = state.db_pool.lock().await;
+    let pool_ref = pool_guard.as_ref().ok_or_else(|| "DB pool not initialized".to_string())?;
+
+   let aplicativo_id = *state.aplicativo_id.lock().await;
+
+    // Llama a la función con los 6 argumentos necesarios
+    license_logic::check_license_status(
+        pool_ref,
+        &state.sql_collate_clause,
+        aplicativo_id,
+        &state.palabra_clave2,
+        &state.db_connection_url,
+        &state.aplicativo,
+    ).await
+}
+/* original antes de app web
 #[tauri::command]
 pub async fn check_license_status_command(state: State<'_, AppState>) -> Result<LicenseCheckResult, String> {
     let sql_collate_clause_ref: &str = &state.sql_collate_clause;
@@ -164,7 +178,7 @@ pub async fn check_license_status_command(state: State<'_, AppState>) -> Result<
             message: "Es la primera vez que inicia la aplicación o la licencia ha sido eliminada.".to_string(),
         });
     }
-}
+} */
 
 /// ----------------------------------------------------------------------------------
 /// COMANDO: save_license_credentials_command
@@ -358,10 +372,7 @@ fn decrypt_and_parse_license_data(
     Ok((server_name_from_credential, db_name_from_credential, fecha_caducidad, aplicativo_code_from_credential))
 }
 
-// Función auxiliar para normalizar el nombre del servidor (quitar el \INSTANCIA)
-fn normalize_server_name(server_name: &str) -> &str {
-    server_name.split('\\').next().unwrap_or(server_name)
-}
+
 
 // Función auxiliar para limpiar la cadena de caracteres no válidos
 fn sanitize_string(s: &str) -> String {

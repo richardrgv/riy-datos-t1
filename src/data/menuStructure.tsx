@@ -1,5 +1,5 @@
 // src/data/menuStructure.ts
-import AdministracionUsuarios from '../pages/AdministracionUsuarios';
+import AdministracionUsuarios from '../pages/Usuarios/AdministracionUsuarios';
 // Importa aquí todos los demás componentes de páginas
 
 

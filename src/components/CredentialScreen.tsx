@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/tauri';
-import { LicenseCheckResult, LicenseStatus } from '../types/license';
+import { LicenseCheckResult } from '../types/license';
 
 // Define los props que este componente recibirá
 interface CredentialScreenProps {
@@ -25,7 +25,8 @@ const CredentialScreen = ({ licenseCheckResult, onCredentialsLoaded }: Credentia
         const fetchDbInfo = async () => {
             try {
                 // Obtiene el nombre del servidor y la base de datos desde el backend
-                const [fetchedServerName, fetchedDbName] = await invoke<[string, string]>('get_db_connection_info');
+                const [fetchedServerName, fetchedDbName] = 
+                    await invoke<[string, string]>('get_db_connection_info_command');
                 setServerName(fetchedServerName);
                 setDbName(fetchedDbName);
             } catch (err: any) {

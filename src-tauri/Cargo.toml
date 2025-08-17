@@ -5,33 +5,20 @@ description = "A Tauri App"
 authors = ["you"]
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [build-dependencies]
 tauri-build = { version = "1", features = [] }
 
 [dependencies]
-tauri = { version = "1", features = [ "shell-open", "window-all"] }
+tauri = { version = "1", features = ["shell-open", "window-all"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-
-# 2025-07-23 se adiciona lo necesario para SQL
+actix-web = "4"
+actix-cors = "0.6.4"
 dotenv = "0.15.0"
-# 2025-07-24 encriptar
-aes-gcm = "0.10" # Para AES-GCM
-# Para manejar claves AES. No olvides habilitar las características necesarias
-# Si usas AES-256, asegúrate de habilitar "aes256"
-# Por ejemplo, aes-gcm con la característica de AES-256:
-# no funciona aes-gcm = { version = "0.10", features = ["aes256"] }
-# Si tu clave es de 128 o 192 bits, ajusta la feature
-# Para este ejemplo, asumiremos AES-256.
-#chrono = { version = "0.4", features = ["serde"] } # Para fechas y la serialización/deserialización
-base64 = "0.22" # Para codificar/decodificar el resultado binario de la encriptación a texto
-hex = "0.4" # Para convertir bytes a representaciones hexadecimales si es necesario
-# Añade (o verifica que exista) esta línea:
-url = "2.5.0" # O la última versión estable, 2.5.0 es una buena opción actual
-
-#sqlx = { version = "0.6.3", features = [ # <--- DEBE SER "0.6.3"
+aes-gcm = "0.10"
+base64 = "0.22"
+hex = "0.4"
+url = "2.5.0"
 sqlx = { version = "0.6", features = [
     "runtime-tokio-rustls", 
     "any", 
@@ -40,14 +27,25 @@ sqlx = { version = "0.6", features = [
     "uuid", 
     "macros",
 ] }
-
-
-tokio = { version = "1.35", features = ["full", "rt-multi-thread"] } # <--- DEBE SER ASÍ
-
-chrono = "0.4" # { version = "0.4", features = ["serde"] }
+tokio = { version = "1.35", features = ["full", "rt-multi-thread"] }
+chrono = { version = "0.4", features = ["serde"] }
 bytes = "1.10.1"
-#base64 = "0.21"
+# Token 2025-08.16 RichardG
+jsonwebtoken = "8" # para generar token, Or the latest version
+rand = "0.8" # generar números aleatorios,
 
 [features]
 # This feature is used for production builds or when a dev server is not specified, DO NOT REMOVE!!
 custom-protocol = ["tauri/custom-protocol"]
+
+[lib]
+name = "shared_lib"
+path = "src/shared/mod.rs"
+
+[[bin]]
+name = "riy-datos-t1" #riy-app
+path = "src/main.rs"
+
+[[bin]]
+name = "riy-web-api"
+path = "src/api/main.rs"

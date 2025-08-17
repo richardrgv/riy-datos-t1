@@ -1,7 +1,7 @@
 // src-tauri/src/models.rs
 use serde::{Serialize, Deserialize};
 use sqlx::FromRow;
-//use chrono::{NaiveDateTime, NaiveDate};
+
 
 // Estructura para representar un usuario
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
@@ -39,4 +39,19 @@ pub struct LoggedInUser {
     pub usuario: String,
     pub nombre: Option<String>, // <-- CORREGIDO: Ahora es un Option<String>
     // Puedes añadir otros campos que necesites, como rol, etc.
+}
+
+// Añade el ID para asegurarte de que Serde no falle al recibirlo del frontend.
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UsuarioActualizable {
+    pub correo: String,
+    pub estado: String,
+}
+
+// Manejo de errores
+#[derive(Serialize, Deserialize)]
+pub struct ApiError {
+    pub code: String,
+    pub message: String,
 }

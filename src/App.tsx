@@ -1,7 +1,7 @@
 // src/App.tsx
 
 import { useState, useEffect } from 'react';
-import { invoke } from '@tauri-apps/api/tauri';
+//import { invoke } from '@tauri-apps/api/tauri';
 import CredentialScreen from './components/CredentialScreen';
 import LoginScreen from './components/LoginScreen';
 import { LicenseCheckResult, LicenseStatus } from './types/license';
@@ -10,6 +10,10 @@ import './App.css';
 import { HashRouter } from 'react-router-dom';
 import { PermissionProvider } from './contexts/PermissionContext';
 import { UserProvider } from './contexts/UserContext'; // <-- Agregado
+// web
+//import { apiService } from './utils/api-service'; // <-- ¡Cambio clave aquí!
+// Importa la función 'userLogin' directamente desde el módulo
+import {checkLicenseStatus } from './utils/api-service';
 
 type AppState = 'checking_db' | 'checking_license' | 'needs_credentials' | 'needs_login' | 'app_ready' | 'critical_error';
 
@@ -17,6 +21,7 @@ function App(): JSX.Element | null {
   const [appState, setAppState] = useState<AppState>('checking_db');
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [licenseCheckResult, setLicenseCheckResult] = useState<LicenseCheckResult | null>(null);
+  // no hay que quitar isLicenseValid
   const [isLicenseValid, setIsLicenseValid] = useState(false);
 
   useEffect(() => {
@@ -24,7 +29,8 @@ function App(): JSX.Element | null {
       try {
         setErrorMessage('');
         console.log('Backend conectado a la DB. Procediendo con la lógica del frontend.');
-        const result = await invoke<LicenseCheckResult>('check_license_status_command');
+        //const result = await invoke<LicenseCheckResult>('check_license_status_command');
+        const result = await checkLicenseStatus();
         setLicenseCheckResult(result);
 
         if (result.status === LicenseStatus.Valid) {

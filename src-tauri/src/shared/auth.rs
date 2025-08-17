@@ -1,7 +1,6 @@
 // src-tauri/src/auth.rs
 
-use sqlx::{Pool, Mssql, query, query_as};
-use crate::AppState;
+use sqlx::{Pool, Mssql};
 use crate::models::LoggedInUser;
 
 // --- MODIFICADO: Ahora devuelve Option<LoggedInUser> en lugar de bool ---
@@ -24,17 +23,24 @@ pub async fn authenticate_erp_user(
     password: &str, 
     sql_collate_clause: &str
 ) -> Result<Option<LoggedInUser>, String> {
+    eprintln!("authenticate_erp_user: Iniciando la autenticación.");
+    println!("Intentando autenticar al usuario: {}", username);
+    println!("Intentando autenticar al password: {}", password);
+    println!("Intentando autenticar al sql_collate_clause: {}", sql_collate_clause);
+
     let user_exists_query = 
         format!("SELECT usuario {0} as usuario, nombre {0} as nombre
                    FROM riy.riy_usuario WITH(NOLOCK)
                   WHERE usuario = @p1 {0}", sql_collate_clause);
-    
+    println!("Intentando autenticar al user_exists_query: {}", user_exists_query);
+
     let riy_user_result: Option<LoggedInUser> = sqlx::query_as(&user_exists_query)
         .bind(username)
         .fetch_optional(pool)
         .await
         .map_err(|e| format!("Error al verificar usuario en riy.riy_usuario: {}", e))?;
-
+    eprintln!("authenticate_erp_user: Paso riy_user_result.");
+    
     if riy_user_result.is_none() {
         return Ok(None);
     }
@@ -52,6 +58,7 @@ pub async fn authenticate_erp_user(
         .fetch_optional(pool)
         .await
         .map_err(|e| format!("Error al obtener la clave del ERP: {}", e))?;
+    eprintln!("authenticate_erp_user: Paso erp_password_result.");
 
     if let Some((encrypted_password,)) = erp_password_result {
         let decrypted_db_password = encrypt_password_simple_displacement(&encrypted_password, false);

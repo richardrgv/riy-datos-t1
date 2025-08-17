@@ -1,0 +1,51 @@
+/* src/components/Menu.css */
+
+.menu-nav {
+    /* Estilo del contenedor principal del menú */
+    width: 250px;
+    background-color: #f0f0f0;
+    padding: 20px;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+    font-family: Arial, sans-serif;
+}
+
+.menu-item-title {
+    /* Estilo para los títulos de los menús (USUARIOS, CONSULTAS) */
+    font-weight: bold;
+    font-size: 1.2rem;
+    cursor: pointer;
+    color: #333;
+    padding: 10px 0;
+    border-bottom: 1px solid #ddd;
+    display: flex; /* Para alinear el texto y el triángulo */
+    justify-content: space-between;
+    align-items: center;
+}
+
+.sub-menu {
+    /* Estilo del contenedor de los sub-menús */
+    padding-left: 20px;
+    margin-top: 5px;
+}
+
+.sub-menu .menu-item {
+    /* Estilo para los enlaces del sub-menú (Mis consultas, Todas las consultas) */
+    display: block; /* <-- ¡AQUÍ ESTÁ LA CLAVE! */
+    font-size: 1rem;
+    color: #6a0dad; /* Un color similar al de la imagen */
+    text-decoration: none;
+    padding: 5px 0;
+}
+
+.sub-menu .menu-item:hover {
+    /* Efecto al pasar el cursor sobre los enlaces del sub-menú */
+    text-decoration: underline;
+}
+
+/* Opcional: Estilo para los enlaces de menú directos que no están en un sub-menú */
+.menu-item {
+    display: block;
+    color: #6a0dad;
+    text-decoration: none;
+    padding: 10px 0;
+}

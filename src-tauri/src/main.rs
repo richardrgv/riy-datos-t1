@@ -1,35 +1,33 @@
 // src-tauri/src/main.rs
 
 use dotenv::dotenv;
-use tauri::{Manager, State};
+//use tauri::{Manager, State};
 use sqlx::{Pool, Mssql};
 
 use tokio::sync::Mutex;
-use std::sync::Arc;
+//use std::sync::Arc;
 
-use crate::license::{save_license_credentials_command, check_license_status_command};
-use crate::db::{get_db_connection_info};
+
 
 // Importa el comando específico del módulo `user`
-use crate::user::{
-    get_users,
-    add_user_from_erp,
-    search_erp_users,
-    update_user
+// Declare the user module
+mod user; 
+
+
+mod license;
+use crate::license::{
+    save_license_credentials_command, 
+    check_license_status_command
 };
 
 
-mod auth;
-mod db;
-mod license;
-mod models; // <-- Declara el nuevo módulo
-mod user; // <-- Declara el nuevo módulo
-
-use models::Usuario; // <-- Importa la estructura Usuario desde el módulo
-use serde::{Serialize, Deserialize}; // Asegúrate de que esta línea esté aquí
+// Usa el crate actual para encontrar la librería compartida
+use shared_lib::{db, models, user_logic};
 
 use crate::models::LoggedInUser; // Asegúrate de tener este import
-//use crate::auth; // Asegúrate de tener este import
+
+
+
 
 pub struct AppState {
     pub db_pool: Mutex<Option<Pool<Mssql>>>,
@@ -97,41 +95,33 @@ async fn main() {
         })
         .manage(initial_state)
         .invoke_handler(tauri::generate_handler![
-            user_login, // Corregido: user_login en user.rs
             save_license_credentials_command,
             check_license_status_command,
-            get_db_connection_info,
-            get_users, // <-- Llama al comando desde el nuevo módulo user
-            add_user_from_erp,
-            search_erp_users,
-            update_user
+            get_db_connection_info_command, // <-- AHORA SÍ USA ESTE COMANDO,
+            user::user_login, 
+            user::get_users,
+            user::add_user,
+            user::search_erp_users,
+            user::update_user,
         ])
         .run(tauri::generate_context!())
         .expect("error al ejecutar la aplicación Tauri");
 }
 
+
+
+
+
+// **AÑADE ESTA FUNCIÓN AQUÍ**
+// Este es el comando "puente" que llama a la función de la librería compartida.
 #[tauri::command]
-async fn user_login(
+async fn get_db_connection_info_command(
     state: tauri::State<'_, AppState>,
-    username: String,
-    password: String,
-) -> Result<Option<LoggedInUser>, String> {
-    let pool_guard = state.db_pool.lock().await;
-    let pool = pool_guard.as_ref().ok_or("El pool de la base de datos no está inicializado".to_string())?;
+) -> Result<(String, String), String> {
+    let db_url = &state.db_connection_url;
     
-    let auth_method = &state.auth_method;
-    let sql_collate_clause_ref = &state.sql_collate_clause;
-
-    let auth_result = match auth_method.as_str() {
-        "ERP" => auth::authenticate_erp_user(&pool, &username, &password, sql_collate_clause_ref).await,
-        _ => auth::authenticate_user(&pool, &username, &password).await,
-    };
-    
-    // Si la autenticación es exitosa, guardamos el usuario en el estado
-    if let Ok(Some(usuario_conectado)) = &auth_result {
-        let mut user_state_guard = state.usuario_conectado.lock().await;
-        *user_state_guard = Some(usuario_conectado.clone());
-    }
-
-    auth_result
+    // CAMBIO CLAVE: Usa `.await` antes de `.map_err`
+    db::get_db_connection_info(db_url)
+        .await // <-- Añade .await aquí
+        .map_err(|e| e.to_string())
 }

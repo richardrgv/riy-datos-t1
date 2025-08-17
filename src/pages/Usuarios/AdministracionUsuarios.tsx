@@ -1,7 +1,6 @@
 // src/pages/AdministracionUsuarios.tsx
-import React from 'react';
-//import Tabs from '../components/Tabs';
-import DropdownSubmenu from '../components/DropdownSubmenu'; // <-- IMPORTA el nuevo componente
+//import React from 'react';
+import DropdownSubmenu from '../../components/DropdownSubmenu'; // <-- IMPORTA el nuevo componente
 
 import ListaDeUsuariosContent from './ListaDeUsuariosContent';
 import ListaDeModulosContent from './ListaDeModulosContent';

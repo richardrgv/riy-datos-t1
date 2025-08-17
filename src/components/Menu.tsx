@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { menuStructure, MenuItem } from '../data/menuStructure.tsx';
 import { usePermissions } from '../contexts/PermissionContext';
-import './MainLayout.css';
+import './Menu.css';
 
 const Menu = () => {
   const { hasPermission } = usePermissions();

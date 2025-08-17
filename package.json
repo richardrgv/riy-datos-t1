@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "tauri-dev": "cross-env DATABASE_URL=$DATABASE_URL_SQLSERVER tauri dev",
+    "tauri-dev": "cross-env RUST_BACKTRACE=full DATABASE_URL=$DATABASE_URL_SQLSERVER tauri dev -- --bin riy-datos-t1",
     "tauri-build": "cross-env DATABASE_URL=$DATABASE_URL_SQLSERVER tauri build",
     "sqlx-migrate-run": "cross-env DATABASE_URL=$DATABASE_URL_SQLSERVER sqlx migrate run",
     "sqlx-database-create": "cross-env DATABASE_URL=$DATABASE_URL_SQLSERVER sqlx database create",
@@ -24,6 +24,7 @@
     "@types/react": "^18.3.1",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
+    "cross-env": "^10.0.0",
     "typescript": "~5.6.2",
     "vite": "^6.0.3"
   }

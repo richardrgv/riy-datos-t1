@@ -1,12 +1,16 @@
 // src/pages/ListaDeUsuariosContent.tsx
 import React, { useState, useEffect } from 'react';
-import { invoke } from '@tauri-apps/api/tauri';
-import { usePermissions } from '../contexts/PermissionContext';
+//import { invoke } from '@tauri-apps/api/tauri';
+import { getUsers, addUser, updateUser } from '../../utils/api-service'; // <-- Agrega esta línea
+import { usePermissions } from '../../contexts/PermissionContext';
 import './ListaDeUsuariosContent.css';
-import ActionDropdown from '../components/AdministracionUsuarios/ActionDropdown';
-import ERPUserSearch from '../components/ERPUserSearch'; // <-- Importar el modal de búsqueda
-import DataForm from '../components/DataForm';         // <-- Importar el formulario genérico
-import DetailsModal from '../components/DetailsModal'; // <-- Importar el nuevo modal
+import ActionDropdown from '../../components/AdministracionUsuarios/ActionDropdown';
+import ERPUserSearch from '../../components/ERPUserSearch'; // <-- Importar el modal de búsqueda
+import DataForm from '../../components/DataForm';         // <-- Importar el formulario genérico
+import DetailsModal from '../../components/DetailsModal'; // <-- Importar el nuevo modal
+import { CustomApiError } from '../../utils/api-client'; // <-- ¡Añade esta línea!
+// Token
+import { useUser } from '../../contexts/UserContext';
 
 // Define la estructura de datos del usuario
 interface Usuario {
@@ -61,6 +65,11 @@ const editFields = [
 
 
 const ListaDeUsuariosContent = () => {
+
+    // Obtienes el token del contexto
+    const { token } = useUser();
+
+  
     const { hasPermission } = usePermissions();
     const [users, setUsers] = useState<Usuario[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
@@ -72,12 +81,21 @@ const ListaDeUsuariosContent = () => {
     // Estado para Editar
     const [userToEdit, setUserToEdit] = useState<Usuario | null>(null); // <-- Nuevo estado para el usuario a editar
     const [userToViewDetails, setUserToViewDetails] = useState<Usuario | null>(null); // <-- NUEVO estado para el modal de detalles
-  
+    // manejo de errores
+    const [apiError, setApiError] = useState('');
+    // NUEVO: Estado para los datos del formulario de agregar
+    const [addFormData, setAddFormData] = useState<Partial<Usuario>>({});
+
+    // 1. Modifica fetchUsers para que reciba 'token' como argumento
     const fetchUsers = async () => {
         try {
             setLoading(true);
-            const result = await invoke<Usuario[]>('get_users');
+            // ⭐ EL CONTROL CLAVE ⭐
+            // Si el token existe, se lo pasas a la función.
+            // Si no existe (en Tauri), la función lo ignorará.
+            const result = await getUsers(token);
             setUsers(result);
+            setError(null);
         } catch (e) {
             console.error("Error al obtener usuarios:", e);
             setError("Error al cargar la lista de usuarios.");
@@ -86,25 +104,42 @@ const ListaDeUsuariosContent = () => {
         }
     };
     
+    // Esto se ejecutará cada vez que el componente se monte.
+    // Dado que el router ya verificó la autenticación, 
+    // sabemos que el token existirá si llegamos aquí.
     useEffect(() => {
         fetchUsers();
-    }, []);
-
-
+    }, []);  
    
     // Handlers para el flujo de agregar usuario
     const handleAddUser = () => {
+        // 1. Limpia el estado de error antes de abrir el modal
+        setApiError(null); 
+        // Reinicia el estado del formulario de agregar antes de mostrar el modal
+        setAddFormData({}); 
         setAddUserFlow('search_erp');
     };
 
     const handleERPUserSelected = (erpUser: UserSearchResult) => {
         setSelectedERPUser(erpUser);
         setAddUserFlow('fill_data');
+
+        // Inicializa el estado del formulario del padre aquí
+        setAddFormData({
+            usuario: erpUser.usuario,
+            nombre: erpUser.nombre,
+            correo: '',
+            estado: 'Vigente',
+        });
     };
 
     const handleCancelAddUser = () => {
         setAddUserFlow('initial');
         setSelectedERPUser(null);
+
+        // Limpia el estado del formulario cuando se cancela
+        setAddFormData({}); 
+        setApiError(null);
     };
 
     const validateFormData = (data: Partial<Usuario>) => {
@@ -124,33 +159,48 @@ const ListaDeUsuariosContent = () => {
         return errors;
     };
 
+    // Aquí es donde está el cambio: relanzamos el error
     const handleAddFormSave = async (formData: Partial<Usuario>) => {
-
-        // Realiza validaciones antes de llamar al backend
-        const validationErrors = validateFormData(formData);
-        if (validationErrors.length > 0) {
-            // Lanza un error para que DataForm lo capture y muestre
-            throw validationErrors.join('\n');
+        setApiError(null); // Limpiamos errores anteriores
+        try {
+            // 1. Validación previa
+            const validationErrors = validateFormData(formData);
+            if (validationErrors.length > 0) {
+                throw validationErrors.join('\n');
+            }
+            console.error("paso validación:");
+            // 2. Llama al servicio. Si la promesa falla, el error se propaga.
+            //    Si tiene éxito, la función continúa.
+            await addUser({
+                usuario: formData.usuario,
+                nombre: formData.nombre,
+                correo: formData.correo
+            });
+            console.error("paso INSERT:");
+            // 3. Si no hubo errores, recarga la lista.
+            await fetchUsers();
+            console.error("paso validación:");
+            // 4.vEl modal se cierra en el padre después de un éxito.
+            // 3. Cierra la ventana modal.
+            setAddUserFlow('initial');
+            setSelectedERPUser(null);
+            setAddFormData({}); // Limpia el estado del formulario
+            //setShowAddModal(false); 
+        } catch (e) {
+            // AHORA podemos ver el error real en la consola
+            console.error("Error en handleAddFormSave:", e); 
+            // Manejo de errores centralizado
+            if (e instanceof CustomApiError) {
+                setApiError(e.message);
+            } else if (typeof e === 'string') {
+                setApiError(e);
+            } else {
+                setApiError("Ocurrió un error inesperado.");
+            }
         }
-
-        // En lugar de un try/catch aquí, el padre delega el manejo del error al hijo
-        const result = await invoke('add_user_from_erp', { 
-            usuario: formData.usuario,
-            nombre: formData.nombre,
-            correo: formData.correo
-        });
-        // Si el invoke falla, la promesa se rechaza y el `catch` del hijo la captura
-        // Si tiene éxito, no pasa nada y el padre cerrará el modal
-        
-        // No hay necesidad de un try/catch aquí. Solo esperamos la promesa
-
-        if (result) {
-            // Si el comando de Tauri es exitoso, actualizamos la lista
-            await fetchUsers(); // <-- Aquí recargamos la lista de usuarios
-        }
-        
-        return result; 
     };
+
+    
 
 
     if (loading) {
@@ -162,7 +212,9 @@ const ListaDeUsuariosContent = () => {
 
     // Editar
     const handleEditUser = (user: Usuario) => {
-         console.log("Se ha seleccionado el usuario para editar:", user); // <-- Añade esta línea para depurar
+        // 1. Limpia el estado de error antes de abrir el modal
+        setApiError(null); 
+        console.log("Se ha seleccionado el usuario para editar:", user); // <-- Añade esta línea para depurar
         setUserToEdit(user);
     };
 
@@ -171,18 +223,41 @@ const ListaDeUsuariosContent = () => {
     };
     
     const handleUpdateUserSave = async (data: Partial<Usuario>) => {
-        const result = await invoke('update_user', {
-            usuarioId: data.usuario_id,
+    // 1. Limpiamos errores anteriores y comenzamos el bloque de manejo de errores
+    setApiError(null); 
+    try {
+        // Validación previa
+        const validationErrors = validateFormData(data);
+        if (validationErrors.length > 0) {
+            // Si hay errores de validación, los lanzamos para que el bloque `catch` los atrape
+            throw validationErrors.join('\n');
+        }
+
+        // 2. Llamada a la API
+        // Si la promesa falla (por ejemplo, usuario no encontrado), el error se propaga al `catch`
+        await updateUser({
+            usuarioId: data.usuario_id, 
             correo: data.correo,
             estado: data.estado
         });
         
-        if (result) {
-            await fetchUsers();
-        }
+        // 3. Si no hubo errores, recargamos la lista y cerramos el modal
+        await fetchUsers();
+        // Cerramos el modal solo después de que la operación sea exitosa
+        handleCloseEditModal(); 
 
-        return result;
-    };
+    } catch (e) {
+        // 4. Manejamos el error
+        // Reutilizamos la misma lógica de manejo de errores que en handleAddFormSave
+        if (e instanceof CustomApiError) {
+            setApiError(e.message);
+        } else if (typeof e === 'string') {
+            setApiError(e);
+        } else {
+            setApiError("Ocurrió un error inesperado.");
+        }
+    }
+};
     
     
     // NUEVO: Handler para abrir el modal de detalles
@@ -195,7 +270,9 @@ const ListaDeUsuariosContent = () => {
         setUserToViewDetails(null);
     };
 
-
+    const handleClearApiError = () => {
+        setApiError(null);
+    };
 
     return (
         <div className="user-list-container">
@@ -249,40 +326,42 @@ const ListaDeUsuariosContent = () => {
                 </table>
             )}
             
-            {/* Aquí se renderizan los modales condicionalmente */}
+            {/* Aquí se renderizan los modales condicionalmente OJO aqui menciona ERPUserSearch.tsx*/}
             {addUserFlow === 'search_erp' && (
                 <ERPUserSearch
                     onUserSelected={handleERPUserSelected}
                     onCancel={handleCancelAddUser}
                 />
             )}
+            {/* OJO aqui menciona DataForm.tsx*/}
             {addUserFlow === 'fill_data' && (
                 <DataForm
                     fields={addFields}
                     title="Agregar Usuario"
-                    initialData={{
-                        usuario: selectedERPUser?.usuario || '',
-                        nombre: selectedERPUser?.nombre || '',
-                        correo: '', 
-                        estado: 'Vigente', 
-                    } as Usuario}
+                    formData={addFormData} // <-- ¡Pasa el estado aquí!
+                    setFormData={setAddFormData} // <-- ¡Y la función para actualizarlo!
                     onSave={handleAddFormSave}
+                    apiError={apiError} // <-- Ya lo tienes, ¡perfecto!
                     onClose={handleCancelAddUser}
+                    onClearError={handleClearApiError} // <-- Pasa la nueva función
                 />
             )}
 
-            {/* Renderizado del modal de Editar */}
+            {/* Renderizado del modal de Editar DataForm.tsx*/}
             {userToEdit && (
                 <DataForm
                     fields={editFields}
                     title="Editar Usuario"
-                    initialData={userToEdit}
+                    formData={userToEdit} // <-- Pasa el estado del usuario a editar
+                    setFormData={setUserToEdit} // <-- Y la función para actualizarlo
                     onSave={handleUpdateUserSave}
+                    apiError={apiError} // <-- Ya lo tienes, ¡perfecto!
                     onClose={handleCloseEditModal}
+                    onClearError={handleClearApiError} // <-- ¡Añade esta línea!
                 />
             )}
 
-            {/* NUEVO: Renderizado del modal de detalles */}
+            {/* NUEVO: Renderizado del modal de detalles DetailsModal.tsx*/}
             {userToViewDetails && (
                 <DetailsModal
                     title="Detalles del Usuario"

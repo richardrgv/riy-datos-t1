@@ -1,16 +1,18 @@
 /* 2025-07-23  RichardG    db
 2025-07-24  RichardG    obtener aplicativo ID      
+2025-08-09  RichardG    no usar AppState, por App Web
 */
 
-use tauri::State;
-use crate::AppState; 
+//use tauri::State;
+//use crate::AppState; 
 
-use sqlx::{Pool, Mssql, Row};
+use sqlx::{Pool, Mssql};
 use sqlx::mssql::MssqlPoolOptions;
 use url::Url;
 
 /// Conecta a la base de datos usando la URL proporcionada.
-pub async fn connect_db(database_url: &str) -> Result<Pool<Mssql>, String> {
+pub async fn connect_db(database_url: &str
+    ) -> Result<Pool<Mssql>, String> {
     println!("Connecting to database at: {}", database_url);
 
     let pool = MssqlPoolOptions::new()
@@ -32,7 +34,8 @@ pub async fn connect_db(database_url: &str) -> Result<Pool<Mssql>, String> {
 }
 
 /// Obtiene el ID del aplicativo de la tabla rir.riy_SeguridadAplicativo
-pub async fn get_aplicativo_id(pool: &Pool<Mssql>, app_code: &str) -> Result<i32, String> {
+pub async fn get_aplicativo_id(pool: &Pool<Mssql>, app_code: &str
+    ) -> Result<i32, String> {
      let (aplicativo_id,) = sqlx::query_as::<_, (i32,)>(
         "SELECT aplicativoID 
          FROM riy.riy_SeguridadAplicativo WITH(NOLOCK)
@@ -46,7 +49,8 @@ pub async fn get_aplicativo_id(pool: &Pool<Mssql>, app_code: &str) -> Result<i32
     Ok(aplicativo_id)
 }
 
-pub fn parse_mssql_connection_url(url: &str) -> Result<(String, String), String> {
+pub fn parse_mssql_connection_url(url: &str
+    ) -> Result<(String, String), String> {
     let parsed_url = Url::parse(url)
         .map_err(|e| format!("Error al parsear la URL de conexión: {}", e))?;
 
@@ -60,8 +64,15 @@ pub fn parse_mssql_connection_url(url: &str) -> Result<(String, String), String>
     Ok((host, db_name))
 }
 
-#[tauri::command]
-pub async fn get_db_connection_info<'a>(state: State<'a, AppState>) -> Result<(String, String), String> {
-    let (server_name, db_name) = parse_mssql_connection_url(&state.db_connection_url)?;
+// no es Tauri
+pub async fn get_db_connection_info(database_url: &str
+    ) -> Result<(String, String), String> {
+    let (server_name, db_name) = 
+        parse_mssql_connection_url(database_url)?;
     Ok((server_name, db_name))
+}
+
+// Función auxiliar para normalizar el nombre del servidor (quitar el \INSTANCIA)
+pub fn normalize_server_name(server_name: &str) -> &str {
+    server_name.split('\\').next().unwrap_or(server_name)
 }
