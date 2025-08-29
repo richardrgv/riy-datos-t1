@@ -1,104 +1,89 @@
 // src/App.tsx
 
-import { useState, useEffect } from 'react';
-//import { invoke } from '@tauri-apps/api/tauri';
+/*
+1. Orquestador de Inicialización: Controla el flujo de inicio de la aplicación, 
+verificando pasos críticos como la conexión a la base de datos o el estado de la licencia.
+
+2. Muestra Pantallas de Estado: Renderiza diferentes componentes (CredentialScreen, 
+una pantalla de carga o una pantalla de error) dependiendo del estado de la aplicación 
+(checking_db, needs_credentials, error).
+
+3. Encapsula la Aplicación: Una vez que todas las verificaciones iniciales son exitosas (app_ready), 
+envuelve toda la aplicación con proveedores de contexto clave, como UserProvider, 
+y luego le cede el control al enrutador principal, AppRouter.
+*/
+
+// src/App.tsx
+
+import React, { useState, useEffect } from 'react';
+import AppRouter from './routes/AppRouter';
 import CredentialScreen from './components/CredentialScreen';
-import LoginScreen from './components/LoginScreen';
+import { UserProvider } from './contexts/UserContext';
+import { checkLicenseStatus } from './utils/api-service';
 import { LicenseCheckResult, LicenseStatus } from './types/license';
-import MainLayout from './components/MainLayout';
 import './App.css';
-import { HashRouter } from 'react-router-dom';
-import { PermissionProvider } from './contexts/PermissionContext';
-import { UserProvider } from './contexts/UserContext'; // <-- Agregado
-// web
-//import { apiService } from './utils/api-service'; // <-- ¡Cambio clave aquí!
-// Importa la función 'userLogin' directamente desde el módulo
-import {checkLicenseStatus } from './utils/api-service';
 
-type AppState = 'checking_db' | 'checking_license' | 'needs_credentials' | 'needs_login' | 'app_ready' | 'critical_error';
+type AppState = 'checking_db' | 'needs_credentials' | 'needs_login' | 'app_ready' | 'error';
 
-function App(): JSX.Element | null {
-  const [appState, setAppState] = useState<AppState>('checking_db');
-  const [errorMessage, setErrorMessage] = useState<string>('');
-  const [licenseCheckResult, setLicenseCheckResult] = useState<LicenseCheckResult | null>(null);
-  // no hay que quitar isLicenseValid
-  const [isLicenseValid, setIsLicenseValid] = useState(false);
+const App = () => {
+    const [appState, setAppState] = useState<AppState>('checking_db');
+    const [licenseCheckResult, setLicenseCheckResult] = useState<LicenseCheckResult | null>(null);
 
-  useEffect(() => {
-    const initializeApp = async () => {
-      try {
-        setErrorMessage('');
-        console.log('Backend conectado a la DB. Procediendo con la lógica del frontend.');
-        //const result = await invoke<LicenseCheckResult>('check_license_status_command');
-        const result = await checkLicenseStatus();
-        setLicenseCheckResult(result);
-
-        if (result.status === LicenseStatus.Valid) {
-          console.log('Licencia válida. Ir a Login.');
-          setIsLicenseValid(true);
-          setAppState('needs_login');
-        } else {
-          console.log('Licencia inválida o expirada. Solicitar credenciales.');
-          setIsLicenseValid(false);
-          setAppState('needs_credentials');
-        }
-      } catch (error: any) {
-        console.error('Error durante la inicialización:', error);
-        setErrorMessage(error.message || 'Error desconocido al iniciar la aplicación.');
-        setAppState('critical_error');
-      }
-    };
-    initializeApp();
-  }, []);
-
-  const handleCredentialsLoaded = (): void => {
-    setAppState('needs_login');
-  };
-
-  const handleLoginSuccess = (): void => {
-    setAppState('app_ready');
-  };
-
-  return (
-    <HashRouter>
-      <PermissionProvider>
-        {/* Aquí va el UserProvider */}
-        <UserProvider>
-          {errorMessage && (
-            <div className="app-loading-container">
-              <div className="credential-form-card">
-                <h2 className="credential-title app-error-title">Error Crítico</h2>
-                <p>{errorMessage}</p>
-                <p className="app-error-text">Por favor, revisa tu configuración o contacta al soporte.</p>
-              </div>
-            </div>
-          )}
-          {!errorMessage && (() => {
-            switch (appState) {
-              case 'checking_db':
-              case 'checking_license':
-                return (
-                  <div className="app-loading-container">
-                    <div className="credential-form-card">
-                      <h2 className="credential-title">Cargando aplicación...</h2>
-                      <p>Verificando conexión a base de datos y licencia.</p>
-                    </div>
-                  </div>
-                );
-              case 'needs_credentials':
-                return <CredentialScreen licenseCheckResult={licenseCheckResult} onCredentialsLoaded={handleCredentialsLoaded} />;
-              case 'needs_login':
-                return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
-              case 'app_ready':
-                return <MainLayout />;
-              default:
-                return null;
+    useEffect(() => {
+        const initializeApp = async () => {
+            try {
+                const result = await checkLicenseStatus();
+                setLicenseCheckResult(result);
+                if (result.status === LicenseStatus.Valid) {
+                    // Si la licencia es válida, el siguiente paso es el login
+                    setAppState('app_ready');
+                } else {
+                    setAppState('needs_credentials');
+                }
+            } catch (error) {
+                console.error('Error durante la inicialización:', error);
+                setAppState('error');
             }
-          })()}
-        </UserProvider>
-      </PermissionProvider>
-    </HashRouter>
-  );
-}
+        };
+        initializeApp();
+    }, []);
+
+    const handleCredentialsLoaded = () => setAppState('app_ready');
+
+    switch (appState) {
+        case 'checking_db':
+            return (
+                <div className="app-loading-container">
+                    <div className="credential-form-card">
+                        <h2 className="credential-title">Cargando aplicación...</h2>
+                        <p>Verificando conexión a base de datos y licencia.</p>
+                    </div>
+                </div>
+            );
+        case 'needs_credentials':
+            return <CredentialScreen licenseCheckResult={licenseCheckResult} onCredentialsLoaded={handleCredentialsLoaded} />;
+        
+        // ⭐ Este es el cambio más importante: app_ready ahora renderiza el AppRouter
+        case 'app_ready':
+            return (
+                <UserProvider>
+                    <AppRouter />
+                </UserProvider>
+            );
+
+        case 'error':
+            return (
+                <div className="app-error-container">
+                    <div className="credential-form-card">
+                        <h2 className="credential-title app-error-title">Error Crítico</h2>
+                        <p>No se pudo conectar al backend o verificar la licencia.</p>
+                        <p className="app-error-text">Por favor, revisa tu configuración o contacta al soporte.</p>
+                    </div>
+                </div>
+            );
+        default:
+            return null;
+    }
+};
 
 export default App;

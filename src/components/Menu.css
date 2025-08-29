@@ -1,51 +1,100 @@
 /* src/components/Menu.css */
 
-.menu-nav {
-    /* Estilo del contenedor principal del menú */
-    width: 250px;
-    background-color: #f0f0f0;
-    padding: 20px;
-    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
-    font-family: Arial, sans-serif;
+.menu-list, .submenu-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
 }
 
-.menu-item-title {
-    /* Estilo para los títulos de los menús (USUARIOS, CONSULTAS) */
-    font-weight: bold;
-    font-size: 1.2rem;
-    cursor: pointer;
-    color: #333;
-    padding: 10px 0;
-    border-bottom: 1px solid #ddd;
-    display: flex; /* Para alinear el texto y el triángulo */
-    justify-content: space-between;
-    align-items: center;
-}
-
-.sub-menu {
-    /* Estilo del contenedor de los sub-menús */
-    padding-left: 20px;
-    margin-top: 5px;
-}
-
-.sub-menu .menu-item {
-    /* Estilo para los enlaces del sub-menú (Mis consultas, Todas las consultas) */
-    display: block; /* <-- ¡AQUÍ ESTÁ LA CLAVE! */
-    font-size: 1rem;
-    color: #6a0dad; /* Un color similar al de la imagen */
-    text-decoration: none;
-    padding: 5px 0;
-}
-
-.sub-menu .menu-item:hover {
-    /* Efecto al pasar el cursor sobre los enlaces del sub-menú */
-    text-decoration: underline;
-}
-
-/* Opcional: Estilo para los enlaces de menú directos que no están en un sub-menú */
 .menu-item {
-    display: block;
-    color: #6a0dad;
+    margin-bottom: 5px;
+}
+
+.menu-item > .menu-link,
+.menu-item > .menu-parent {
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
     text-decoration: none;
+    color: #495057;
+    border-radius: 4px;
+    transition: background-color 0.2s, color 0.2s;
+    font-size: 1rem;
+    cursor: pointer;
+    overflow: hidden;
+    white-space: nowrap;
+    width: 100%;
+}
+
+.menu-item > .menu-parent {
+    font-weight: bold;
+    color: #343a40;
+}
+
+.menu-item > .menu-link:hover,
+.menu-item > .menu-parent:hover {
+    background-color: #e2e6ea;
+}
+
+.menu-item > .menu-link.active {
+    background-color: #007bff;
+    color: white;
+}
+.menu-item > .menu-link.active:hover {
+    background-color: #0072e1;
+}
+
+.menu-icon {
+    min-width: 20px;
+    flex-basis: 20px;
+    text-align: center;
+    font-size: 1.2em;
+    margin-right: 15px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.menu-text {
+    flex-grow: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.menu-text.hidden {
+    display: none;
+}
+
+.sidebar.closed .menu-link,
+.sidebar.closed .menu-parent {
     padding: 10px 0;
+    justify-content: center;
+    width: 100%;
+    overflow: visible;
+}
+
+.sidebar.closed .menu-icon {
+    margin-right: 0;
+}
+
+.submenu-list {
+    padding-left: 0;
+}
+
+/* ⭐ Regla simplificada para la indentación */
+.menu-item > .menu-link,
+.menu-item > .menu-parent {
+    padding: 10px 15px;
+}
+
+.menu-item[data-level='1'] > .menu-link,
+.menu-item[data-level='1'] > .menu-parent {
+    padding-left: 40px;
+}
+
+.menu-item[data-level='2'] > .menu-link,
+.menu-item[data-level='2'] > .menu-parent {
+    padding-left: 60px;
 }

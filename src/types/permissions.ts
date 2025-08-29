@@ -4,9 +4,14 @@
 export enum PermissionKey {
   // Permisos de alto nivel para secciones enteras
   AdminUsuariosGeneral = 'administrar_usuarios',
+  AdminMenus = 'administrar_menus',
   //VerDashboard = 'ver_dashboard',
 
+
   // Permisos para funcionalidades específicas
+
+  //ListaMenus = 'lista_menus',
+
   ListaUsuarios = 'lista_usuarios',
   ListaModulos = 'lista_modulos',
   ListaRoles = 'lista_roles',

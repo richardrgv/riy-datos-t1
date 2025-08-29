@@ -1,7 +1,7 @@
 use sqlx::{Pool, Mssql};
 use sqlx::query;
 //use crate::models::{Usuario, UserSearchResult}; // Asegúrate de definir UsuarioActualizable
-use super::models::{Usuario, UserSearchResult, LoggedInUser};
+use super::models::{Usuario, UserSearchResult, User};
 use super::{auth}; 
 use sqlx::Error as SqlxError;
 
@@ -136,6 +136,7 @@ pub async fn add_user_logic(
     Ok(()) //format!("Usuario '{}' agregado exitosamente desde el ERP.", usuario))
 }
 
+
 // Función para actualizar un usuario (independiente de Tauri)
 pub async fn update_user_logic(
     pool: &sqlx::Pool<sqlx::Mssql>,
@@ -144,10 +145,11 @@ pub async fn update_user_logic(
     estado: &str,
     modificado_por: &str,
 ) -> Result<usize, UserError> { 
+    println!("--> user_logic: Intentando actualizar usuario {}", usuario_id);
     
     // This is the correct, standard way to write the query.
     // The macro automatically maps the Rust variables to the SQL placeholders.
-    let rows_affected = sqlx::query!(
+    let query_result = sqlx::query!(
         r#"
         UPDATE riy.riy_usuario
         SET 
@@ -164,63 +166,32 @@ pub async fn update_user_logic(
         .bind(modificado_por)
         .bind(usuario_id)
         .execute(pool)
-        .await?
-        //.map_err(|e| e.to_string())?
-        .rows_affected();
-    
+        .await;
+    // Now, handle the Result explicitly
+    let rows_affected = match query_result {
+        Ok(result) => {
+            println!("DB query was successful.");
+            result.rows_affected()
+        }
+        Err(e) => {
+            println!("DB query failed with error: {:?}", e);
+            // This is the correct way to construct the enum variant
+            return Err(UserError::DatabaseError(e)); 
+        }
+    };
+
+     println!("--> user_logic: Filas afectadas: {:?}", rows_affected);
 
     if rows_affected == 0 {
-        // En lugar de un String, devuelve la variante del enum
         return Err(UserError::NotFound); 
-        //return Err(format!("No se encontró ningún usuario con el ID: {} para actualizar.", usuario_id));
     }
 
-    // Convierte `u64` a `usize` de manera segura antes de devolverlo
     Ok(rows_affected.try_into().unwrap())
 }
+
     
 
-    /*  Tu consulta SQL de actualización
-    let query = "
-        UPDATE
-            riy.riy_usuario
-        SET
-            correo = ?,
-            estado = ?,
-            fechaModificacion = GETDATE(),
-            modificadoPor = ?
-        WHERE
-            usuarioID = ?;
-    ";
-     // AÑADE ESTE PRINT PARA VER LA CONSULTA QUE SE VA A EJECUTAR
-    println!("Ejecutando la siguiente consulta SQL:");
-    println!("{}", query);
-    println!("Valores a usar en la query:");
-    println!("- correo: {}", correo);
-    println!("- estado: {}", estado);
-    println!("- autor: {}", modificado_por);
-    println!("- usuario_id: {}", usuario_id);
 
-    // Intenta ejecutar la consulta y maneja el error
-    // It captures the number of rows affected by the query.
-    let rows_affected =sqlx::query(query)
-        .bind(correo)
-        .bind(estado)
-        .bind(modificado_por)
-        .bind(usuario_id)
-        .execute(pool)
-        .await
-        .map_err(|e| format!("Error al actualizar el usuario: {}", e))?
-        .rows_affected(); // <-- Captura cuántas filas fueron afectadas
-    
-    if rows_affected == 0 {
-        return Err(format!("No se encontró ningún usuario con el ID: {} para actualizar.", usuario_id));
-    }
-
-    println!("La actualización del usuario {} se ha ejecutado con éxito.", usuario_id);
-    Ok(())
-    
-}*/
 // Agrega aquí la lógica para add_user_from_erp
 // ...
 
@@ -229,14 +200,14 @@ pub async fn update_user_logic(
 // La nueva función central con un nombre más claro
 pub async fn authenticate_user_logic(
     pool: &Pool<Mssql>,
-    username: &str,
+    usuario: &str,
     password: &str,
     auth_method: &str,
     sql_collate_clause: &str
-) -> Result<Option<LoggedInUser>, String> {
+) -> Result<Option<User>, String> {
     match auth_method {
-        "ERP" => auth::authenticate_erp_user(&pool, username, password, sql_collate_clause).await,
-        _ => auth::authenticate_user(&pool, username, password).await,
+        "ERP" => auth::authenticate_erp_user(&pool, usuario, password, sql_collate_clause).await,
+        _ => auth::authenticate_user(&pool, usuario, password).await,
     }
 }
 

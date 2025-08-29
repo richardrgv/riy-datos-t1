@@ -1,0 +1,36 @@
+/* src/components/TabMenu.css */
+
+.tabs-container {
+  display: flex;
+  flex-wrap: nowrap; /* ⭐ This ensures the tabs don't wrap to the next line */
+  overflow-x: auto; /* ⭐ This enables the horizontal scrollbar */
+  -webkit-overflow-scrolling: touch; /* For a smoother scroll on iOS devices */
+  margin-bottom: 20px;
+  border-bottom: 2px solid #ddd;
+}
+
+.tabs-container::-webkit-scrollbar {
+  display: none; /* Hides the scrollbar for a cleaner look */
+}
+
+.tab-link {
+  flex-shrink: 0; /* ⭐ This is critical: it prevents the tabs from shrinking */
+  padding: 10px 15px;
+  text-decoration: none;
+  color: #555;
+  font-weight: bold;
+  transition: all 0.3s ease;
+  border-bottom: 2px solid transparent;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.tab-link:hover {
+  background-color: #f0f0f0;
+  color: #000;
+}
+
+.tab-link.active {
+  color: #007bff;
+  border-bottom: 2px solid #007bff;
+}

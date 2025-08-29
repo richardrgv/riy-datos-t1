@@ -1,0 +1,29 @@
+
+/* src/layouts/AdministracionUsuariosLayout.css */
+
+.administracion-usuarios-layout-container {
+    padding: 20px;
+}
+
+.header-tabs-container {
+    display: flex;
+    align-items: center;
+    gap: 20px; /* ⭐ Espacio entre el título y el dropdown */
+    margin-bottom: 20px;
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 10px;
+}
+
+.header-tabs-container h2 {
+    font-size: 1.5rem; /* ⭐ Tamaño de fuente adecuado */
+    font-weight: 600;
+    margin: 0;
+}
+
+.tabs-dropdown {
+    padding: 8px 12px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    font-size: 1rem;
+    cursor: pointer;
+}

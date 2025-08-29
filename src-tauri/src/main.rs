@@ -22,7 +22,7 @@ use crate::license::{
 
 
 // Usa el crate actual para encontrar la librería compartida
-use shared_lib::{db, models, user_logic};
+use shared_lib::{db, models, user_logic, menu_logic};
 
 use crate::models::LoggedInUser; // Asegúrate de tener este import
 
@@ -103,6 +103,7 @@ async fn main() {
             user::add_user,
             user::search_erp_users,
             user::update_user,
+            menu::get_all_menus_command,
         ])
         .run(tauri::generate_context!())
         .expect("error al ejecutar la aplicación Tauri");

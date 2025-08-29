@@ -1,0 +1,64 @@
+/* src/components/ActionMenu.css */
+
+.action-menu-container {
+    position: relative;
+    display: inline-block;
+}
+
+.action-menu-button {
+    background: none;
+    border: none;
+    color: #555;
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0 8px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s ease-in-out;
+}
+
+.action-menu-button:hover,
+.action-menu-button:focus {
+    color: #007bff; /* Un color de acento al pasar el mouse */
+    outline: none;
+}
+
+.action-menu-list {
+    position: absolute;
+    top: 100%; /* Posiciona el menú debajo del botón */
+    right: 0; /* Alinea el menú a la derecha del botón */
+    z-index: 10;
+    background-color: #fff;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    min-width: 160px;
+    padding: 5px 0;
+    margin-top: 5px;
+    list-style: none; /* Elimina los puntos de la lista */
+    display: flex;
+    flex-direction: column;
+}
+
+.action-menu-item {
+    background: none;
+    border: none;
+    color: #333;
+    padding: 10px 15px;
+    text-align: left;
+    width: 100%;
+    cursor: pointer;
+    font-size: 14px;
+    white-space: nowrap; /* Evita que el texto se rompa */
+}
+
+.action-menu-item:hover {
+    background-color: #f5f5f5;
+}
+
+/* Opcional: Estilo para la fila de la tabla que contiene el menú */
+td {
+    vertical-align: middle;
+}

@@ -1,0 +1,6 @@
+/* src/layouts/WindowLayout.css */
+.window-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}

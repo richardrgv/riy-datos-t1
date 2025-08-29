@@ -1,0 +1,96 @@
+/* Container for the entire menu 
+This CSS handles the styling for both the desktop tabs and
+the mobile dropdown menu. It ensures a clean, responsive design.
+*/
+
+/* src/components/ResponsiveTabMenu.css */
+
+/* ⭐ Estilos para la barra de pestañas (escritorio) */
+.tabs-container {
+  display: flex;
+  margin-bottom: 20px;
+  border-bottom: 2px solid #ddd;
+}
+
+.tab-link {
+  padding: 10px 15px;
+  text-decoration: none;
+  color: #555;
+  font-weight: bold;
+  transition: all 0.3s ease;
+  border-bottom: 2px solid transparent;
+}
+
+.tab-link:hover {
+  background-color: #f0f0f0;
+  color: #000;
+}
+
+.tab-link.active {
+  color: #007bff;
+  border-bottom: 2px solid #007bff;
+}
+
+/* ⭐ Estilos para el menú desplegable (móvil) */
+.dropdown-menu-container {
+  position: relative;
+  margin-bottom: 20px;
+}
+
+.dropdown-toggle {
+  width: 100%;
+  padding: 10px;
+  background-color: #f0f0f0;
+  border: 1px solid #ddd;
+  text-align: left;
+}
+
+.dropdown-list {
+  position: absolute;
+  width: 100%;
+  background-color: #fff;
+  border: 1px solid #ddd;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+}
+
+.dropdown-list a {
+  padding: 10px;
+  text-decoration: none;
+  color: #333;
+}
+
+/* src/components/ResponsiveDropdownMenu.css */
+
+.dropdown-menu {
+  position: relative; /* ⭐ Este es el contenedor que aloja el menú desplegado, y es el padre del dropdown-content */
+  min-width: 150px;
+}
+
+.dropdown-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  cursor: pointer;
+  padding: 0.5rem 1rem;
+  background-color: white;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.dropdown-content {
+  position: absolute; /* ⭐ Se posiciona en relación al .dropdown-menu */
+  top: 100%; /* Coloca el menú justo debajo del botón */
+  right: 0;
+  width: max-content;
+  min-width: 150px;
+  background-color: white;
+  border: 1px solid #ccc;
+  border-top: none;
+  box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+  z-index: 1000;
+  border-radius: 0 0 4px 4px;
+}

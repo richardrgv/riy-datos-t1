@@ -1,0 +1,46 @@
+/* src/pages/Usuarios/ListaDeUsuariosContent.css */
+
+/* La envoltura que contendrá el scroll horizontal */
+.table-wrapper {
+  overflow-x: auto; /* ⭐ La clave para el desplazamiento horizontal */
+}
+
+/* La tabla en sí, que ahora es flexible */
+.user-table {
+  width: 100%;
+  border-collapse: collapse;
+  /* ⭐ El min-width aquí no es necesario, el contenido lo determina */
+}
+
+/* ⭐ El resto de tus estilos de tabla... */
+.user-table th, .user-table td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: left;
+}
+
+/* ⭐ Estilos para la barra de acciones superior */
+.table-header {
+    display: flex;
+    justify-content: flex-end; /* Alinea el botón a la derecha */
+    margin-bottom: 20px;
+}
+
+/* ⭐ Estilos para el botón */
+.add-user-button {
+    background-color: #007bff; /* Color azul para el botón principal */
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 500;
+    transition: background-color 0.3s ease;
+}
+
+.add-user-button:hover {
+    background-color: #0056b3; /* Un tono más oscuro al pasar el mouse */
+}
+
+/* ⭐ Puedes eliminar todas las reglas @media que transformaban la tabla */

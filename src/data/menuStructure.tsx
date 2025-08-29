@@ -1,5 +1,6 @@
 // src/data/menuStructure.ts
-import AdministracionUsuarios from '../pages/Usuarios/AdministracionUsuarios';
+import MenuList from '../components/MenuList';
+ //import AdministracionUsuarios from '../pages/Usuarios/AdministracionUsuarios';
 // Importa aquí todos los demás componentes de páginas
 
 
@@ -13,8 +14,8 @@ export interface MenuItem {
   element?: React.ReactNode; // <-- Nuevo: El componente a renderizar
 } 
 
-export const menuStructure: MenuItem[] = [
-  {
+export const menuStructure: MenuItem[] = [];
+/*  {
     id: 'usuarios',
     title: 'USUARIOS',
     isTitle: true,
@@ -71,5 +72,16 @@ export const menuStructure: MenuItem[] = [
     children: [
       { id: 'administrar_ayudas.lista', title: 'Lista de ayudas', path: '/ayudas/lista' }
     ]
+  },
+  {
+    id: 'menus',
+    title: 'ADMINISTRAR MENUS',
+    isTitle: true,
+    children: [
+      { id: 'menus.lista_menus', title: 'Menú', path: '/menus/lista_menus',
+        permission: 'lista_menus'
+       },
+    ]
   }
 ];
+*/

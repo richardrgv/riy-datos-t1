@@ -1,7 +1,7 @@
 // src/components/ProtectedRoute.tsx
 import React from 'react';
 import { Navigate } from 'react-router-dom';
-import { usePermissions } from '../contexts/PermissionContext';
+import { usePermissions } from '../contexts/TemporaryPermissionContext';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;

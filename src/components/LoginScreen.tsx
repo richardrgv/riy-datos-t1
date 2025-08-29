@@ -1,20 +1,23 @@
 // src/components/LoginScreen.tsx
+import { useNavigate } from 'react-router-dom'; // Importa useNavigate
 import { useState } from 'react';
 import { userLogin } from '../utils/api-service';
 import { appWindow } from '@tauri-apps/api/window';
 import { useUser } from '../contexts/UserContext'; // <-- Tu hook personalizado
 import './LoginScreen.css';
 
-// Las props de este componente ya no serán necesarias
+/* Las props de este componente ya no serán necesarias
 interface LoginScreenProps {
   onLoginSuccess: () => void;
-}
+} */
 
-function LoginScreen({ onLoginSuccess }: LoginScreenProps): JSX.Element {
+//
+function Login(): JSX.Element {
   // Ahora, en lugar de setUser, necesitas la función de login del contexto que maneja todo.
   // Tu hook 'useUser' debe proveer esta función.
-  const { login } = useUser(); 
-  
+  const { login } = useUser();
+  const navigate = useNavigate(); // Usa el hook useNavigate
+
   const [credentials, setCredentials] = useState({ usuario: '', password: '' });
   const [loading, setLoading] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
@@ -28,27 +31,25 @@ function LoginScreen({ onLoginSuccess }: LoginScreenProps): JSX.Element {
     setErrorMessage('');
 
     try {
-      // 1. Llama a la API
-      const result = await userLogin(credentials);
+      // 1. Llama a la API a través del servicio.
+      // El servicio ya maneja el token internamente.
+      const { user, permissions } = await userLogin(credentials);
 
-      // 2. Si el login fue exitoso...
-      if (result) {
-        // Desglosa el objeto 'result' para obtener los 3 argumentos
-        const { user, permissions, token } = result;
+      // 2. Si la llamada es exitosa, el contexto se actualiza.
+      login(user, permissions);
 
-        // ...y pásalos por separado a la función 'login' del contexto.
-        login(user, permissions, token);
+      // 3. Llama a la función de éxito para cambiar la vista.
+      // onLoginSuccess(); (ya no)
+      // 3. Usar el hook useNavigate de React Router: 
+      //    Esto te permite redirigir al usuario programáticamente 
+      //    después de un inicio de sesión exitoso.
+      // ⭐ Redirige a la página principal después de un login exitoso
+      navigate('/');
 
-        // 3. Ya no necesitas onLoginSuccess, ya que el contexto
-        // ahora maneja el estado de la aplicación.
-        onLoginSuccess();
-      } else {
-        setErrorMessage('Usuario o contraseña incorrectos.');
-      }
-    } catch (error: any) {
+    } catch (error: any) { // <-- Add the catch block here
       console.error('Error en el login:', error);
       setErrorMessage(error.message || 'Error desconocido al intentar iniciar sesión.');
-    } finally {
+    } finally { // <-- Add the finally block here
       setLoading(false);
     }
   };
@@ -113,4 +114,4 @@ function LoginScreen({ onLoginSuccess }: LoginScreenProps): JSX.Element {
   );
 }
 
-export default LoginScreen;
+export default Login;

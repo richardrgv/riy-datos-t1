@@ -2,7 +2,7 @@
 import { menuStructure, MenuItem } from '../data/menuStructure';
 
 export const findTitleByPath = (path: string): string => {
-  let title = 'Mi Aplicación'; // Título por defecto
+  let title = 'RIY Datos'; // Título por defecto
 
   const find = (items: MenuItem[]) => {
     for (const item of items) {

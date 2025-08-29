@@ -1,14 +1,15 @@
 // src-tauri/src/auth.rs
 
 use sqlx::{Pool, Mssql};
-use crate::models::LoggedInUser;
+use crate::models::{User};
 
 // --- MODIFICADO: Ahora devuelve Option<LoggedInUser> en lugar de bool ---
-pub async fn authenticate_user(pool: &Pool<Mssql>, username: &str, password: &str) -> Result<Option<LoggedInUser>, String> {
-    if username == "admin" && password == "password" {
-        let user_data = LoggedInUser {
-            usuario: username.to_string(),
-            nombre: Some("Administrador Dummy".to_string()), // <-- CORREGIDO: Envuelto en Some()
+pub async fn authenticate_user(pool: &Pool<Mssql>, usuario: &str, password: &str) -> Result<Option<User>, String> {
+    if usuario == "admin" && password == "password" {
+        let user_data = User {
+            usuario: usuario.to_string(),
+            nombre: "Administrador Dummy".to_string(), // <--- Corrected
+            correo: "Correo Dummy".to_string(),        // <--- Corrected
         };
         Ok(Some(user_data))
     } else {
@@ -19,23 +20,23 @@ pub async fn authenticate_user(pool: &Pool<Mssql>, username: &str, password: &st
 // Autenticacion ERP
 pub async fn authenticate_erp_user(
     pool: &Pool<Mssql>, 
-    username: &str, 
+    usuario: &str, 
     password: &str, 
     sql_collate_clause: &str
-) -> Result<Option<LoggedInUser>, String> {
+) -> Result<Option<User>, String> {
     eprintln!("authenticate_erp_user: Iniciando la autenticación.");
-    println!("Intentando autenticar al usuario: {}", username);
+    println!("Intentando autenticar al usuario: {}", usuario);
     println!("Intentando autenticar al password: {}", password);
     println!("Intentando autenticar al sql_collate_clause: {}", sql_collate_clause);
 
     let user_exists_query = 
-        format!("SELECT usuario {0} as usuario, nombre {0} as nombre
+        format!("SELECT usuario {0} as usuario, nombre {0} as nombre, correo {0} as correo
                    FROM riy.riy_usuario WITH(NOLOCK)
                   WHERE usuario = @p1 {0}", sql_collate_clause);
     println!("Intentando autenticar al user_exists_query: {}", user_exists_query);
 
-    let riy_user_result: Option<LoggedInUser> = sqlx::query_as(&user_exists_query)
-        .bind(username)
+    let riy_user_result: Option<User> = sqlx::query_as(&user_exists_query)
+        .bind(usuario)
         .fetch_optional(pool)
         .await
         .map_err(|e| format!("Error al verificar usuario en riy.riy_usuario: {}", e))?;
@@ -54,7 +55,7 @@ pub async fn authenticate_erp_user(
                  sql_collate_clause);
 
     let erp_password_result: Option<(String,)> = sqlx::query_as(&erp_query)
-        .bind(username)
+        .bind(usuario)
         .fetch_optional(pool)
         .await
         .map_err(|e| format!("Error al obtener la clave del ERP: {}", e))?;

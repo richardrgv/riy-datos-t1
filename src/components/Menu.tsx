@@ -1,70 +1,96 @@
+// src/components/Menu.tsx 
+
+/* Se encarga de la navegación
+
+Piensa en el proceso como una llave y una cerradura.
+La base de datos te da la llave. Durante el proceso de inicio de sesión, 
+el backend verifica tus credenciales y te devuelve una "llave" (tus permisos) 
+que dice lo que puedes y no puedes hacer. 
+Esta llave se almacena en el UserContext y está disponible en toda tu aplicación.
+
+routeUtils define las cerraduras. El archivo routeUtils es un mapa estático que dice: 
+"Para acceder a la página de Usuarios, necesitas una llave con la etiqueta can_view_users." 
+Esta configuración es fija y no cambia por usuario.
+
+usePermissions es el mecanismo de verificación. 
+Este hook compara tu llave (los permisos del UserContext) 
+con la cerradura de la página (el permiso definido en routeUtils).
+*/
+
 // src/components/Menu.tsx
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { menuStructure, MenuItem } from '../data/menuStructure.tsx';
-import { usePermissions } from '../contexts/PermissionContext';
+
+import React from 'react';
+import { NavLink } from 'react-router-dom';
+import { sidebarRoutes } from '../routes/routeUtils';
 import './Menu.css';
 
-const Menu = () => {
-  const { hasPermission } = usePermissions();
-  const [openTitles, setOpenTitles] = useState<string[]>([]);
+interface MenuItemProps {
+    item: any; // Ajusta el tipo de `item` según la estructura de `sidebarRoutes`
+    isMenuOpen: boolean;
+    level?: number; // Para controlar la indentación
+}
 
-  const toggleTitle = (id: string) => {
-    setOpenTitles(prev =>
-      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
-    );
-  };
+// ⭐ Componente auxiliar para un solo elemento del menú
+const MenuItem: React.FC<MenuItemProps> = ({ item, isMenuOpen, level = 0 }) => {
+    const paddingLeft = (level * 20) + (level === 0 ? 0 : 20); // Ajusta la indentación según el nivel
 
-  const renderMenuItem = (item: MenuItem) => {
-    // Si es un "titulo" (un menú con sub-ítems)
-    if (item.isTitle && item.children) {
-      // Filtramos los hijos para mostrar solo los que tienen permiso
-      const visibleChildren = item.children.filter(child => 
-        // ¡Cambiamos la lógica aquí! Solo se muestra si tiene un permiso Y el usuario lo tiene.
-        !!child.permission && hasPermission(child.permission)
-      );
-
-      // Si no hay hijos visibles, no mostramos el menú padre
-      if (visibleChildren.length === 0) {
-        return null;
-      }
-
-      const isOpen = openTitles.includes(item.id);
-      return (
-        <div key={item.id}>
-          <div className="menu-item-title" onClick={() => toggleTitle(item.id)}>
-            <span>{item.title}</span>
-            <span>{isOpen ? '▲' : '▼'}</span>
-          </div>
-          {isOpen && (
-            <div className="sub-menu">
-              {visibleChildren.map(child => renderMenuItem(child))}
-            </div>
-          )}
-        </div>
-      );
-    }
-    // Si es un enlace directo
-    else if (!item.isTitle) {
-      // Aplicamos la misma lógica estricta
-      if (!!item.permission && hasPermission(item.permission)) {
+    // Si el ítem tiene hijos, renderiza un submenú
+    if (item.children && item.children.length > 0) {
         return (
-          <Link key={item.id} to={item.path || '#'} className="menu-item">
-            {item.title}
-          </Link>
-        );
-      }
-    }
-    
-    // Cualquier otro caso (un ítem sin permiso) no se renderiza
-    return null;
-  };
+            <li className="menu-item has-children" style={{ paddingLeft: `${paddingLeft}px` }}>
+                <div
+                    className="menu-parent"
+                    title={item.name}
+                >
+                    {/* ⭐ Manejo del icono: si existe, se muestra. Si no, se mantiene un espacio */}
+                    {item.icon && <span className="menu-icon">{item.icon}</span>}
+                    {!item.icon && isMenuOpen && <span className="menu-icon-placeholder"></span>} {/* Espacio si no hay icono y menú abierto */}
+                    {!item.icon && !isMenuOpen && <span className="menu-icon-hidden"></span>} {/* Espacio si no hay icono y menú cerrado (oculto) */}
 
-  return (
-    <nav className="menu-nav">
-      {menuStructure.map(renderMenuItem)}
-    </nav>
-  );
+                    <span className={`menu-text ${!isMenuOpen ? 'hidden' : ''}`}>{item.name}</span>
+                </div>
+                <ul className="submenu-list">
+                    {/* Llamada recursiva, pasando la prop `isMenuOpen` y aumentando el nivel */}
+                    {item.children.map((child, index) => (
+                        <MenuItem key={index} item={child} isMenuOpen={isMenuOpen} level={level + 1} />
+                    ))}
+                </ul>
+            </li>
+        );
+    }
+  
+
+    // Si no tiene hijos, renderiza un enlace con el ícono
+    return (
+        <li className="menu-item" style={{ paddingLeft: `${paddingLeft}px` }}>
+            <NavLink
+                to={item.path}
+                className={({ isActive }) => `menu-link ${isActive ? 'active' : ''}`}
+                title={item.name}
+            >
+                {/* ⭐ Manejo del icono: si existe, se muestra. Si no, se mantiene un espacio */}
+                {item.icon && <span className="menu-icon">{item.icon}</span>}
+                {!item.icon && isMenuOpen && <span className="menu-icon-placeholder"></span>}
+                {!item.icon && !isMenuOpen && <span className="menu-icon-hidden"></span>}
+
+                <span className={`menu-text ${!isMenuOpen ? 'hidden' : ''}`}>{item.name}</span>
+            </NavLink>
+        </li>
+    );
+
+};
+
+// ⭐ El componente principal del menú
+const Menu: React.FC<MenuProps> = ({ isMenuOpen }) => {
+    return (
+        <nav className="menu-container">
+            <ul className="menu-list">
+                {sidebarRoutes.map((route, index) => (
+                    <MenuItem key={index} item={route} isMenuOpen={isMenuOpen} level={0} />
+                ))}
+            </ul>
+        </nav>
+    );
 };
 
 export default Menu;

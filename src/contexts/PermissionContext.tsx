@@ -31,6 +31,7 @@ export const PermissionProvider: React.FC<PermissionProviderProps> = ({ children
       'editar_usuario',
       'ver_usuario',
       'roles_usuario',
+      'lista_menus',
       //'vistas_usuario',
       'lista_roles',
       'ver_modulos',
@@ -42,9 +43,9 @@ export const PermissionProvider: React.FC<PermissionProviderProps> = ({ children
       'ver_conceptos',
       'crear_concepto'
     ];
-    setPermissions(mockPermissions);
+    //setPermissions(mockPermissions);
   }, []);
-
+  
   // Función para verificar si el usuario tiene un permiso específico
   const hasPermission = (permission: string): boolean => {
     return permissions.includes(permission);

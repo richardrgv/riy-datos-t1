@@ -1,7 +1,7 @@
 // src-tauri/src/user.rs
 
 use tauri::State;
-use crate::models::{Usuario, UserSearchResult}; //, LoggedInUser};
+use crate::models::{Usuario, UserSearchResult, LoginData, User}; //, LoggedInUser};
 use crate::{AppState, user_logic}; // <-- Agrega user_logic aquí
 
 use shared_lib::user_logic::UserError;
@@ -9,11 +9,12 @@ use crate::models::LoggedInUser; // Asegúrate de tener este import
 // login
 use serde::{Deserialize, Serialize};
 
+/* 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct LoginData {
     pub usuario: String,
     pub password: String,
-}
+}*/
 
 // Asegúrate de que tu `TauriLoginResponse` tenga un campo de permisos
 #[derive(serde::Serialize)]
@@ -28,6 +29,9 @@ pub async fn user_login(
     state: tauri::State<'_, AppState>,
     credentials: LoginData, // Asume que ya tienes este struct definido
 ) -> Result<TauriLoginResponse, String> {
+
+    println!("credentials: {:?}", credentials);
+
     let pool_guard = state.db_pool.lock().await;
     let pool_ref = pool_guard.as_ref().expect("DB Pool no disponible");
     // 1. Llama a la lógica de autenticación centralizada
@@ -44,7 +48,15 @@ pub async fn user_login(
             // 2. Si el login es exitoso, obtén la referencia al estado y guarda el usuario
             let mut user_state_guard = state.usuario_conectado.lock().await;
             // Pasa el objeto `user` completo
-            *user_state_guard = Some(user.clone());
+            //*user_state_guard = Some(user.clone());
+
+            // We will now create the LoggedInUser instance before saving to state.
+            let logged_in_user = LoggedInUser {
+                usuario: user.usuario.clone(), // Clone the string to transfer ownership
+                nombre: Some(user.nombre.clone()), // Use `Some()` to wrap the String
+            };
+
+            *user_state_guard = Some(logged_in_user.clone());
 
             // 3. Obtén los permisos para la respuesta al frontend
             let permissions = user_logic::get_user_permissions_logic(
@@ -52,8 +64,10 @@ pub async fn user_login(
                 &credentials.usuario,
             ).await.map_err(|e| e.to_string())?;
 
+            println!("logged in user: {:?}", logged_in_user);
+
             // 4. Devuelve la respuesta completa al frontend de Tauri
-            Ok(TauriLoginResponse { user, permissions })
+            Ok(TauriLoginResponse { user: logged_in_user, permissions })
         },
         Ok(None) => {
             // 5. Autenticación fallida

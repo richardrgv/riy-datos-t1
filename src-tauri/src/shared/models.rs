@@ -1,4 +1,5 @@
 // src-tauri/src/models.rs
+
 use serde::{Serialize, Deserialize};
 use sqlx::FromRow;
 
@@ -34,12 +35,7 @@ pub struct UserSearchResult {
     pub nombre: Option<String>, // <-- ¡CORREGIDO! Ahora es un Option<String>
 } 
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, FromRow)]
-pub struct LoggedInUser {
-    pub usuario: String,
-    pub nombre: Option<String>, // <-- CORREGIDO: Ahora es un Option<String>
-    // Puedes añadir otros campos que necesites, como rol, etc.
-}
+
 
 // Añade el ID para asegurarte de que Serde no falle al recibirlo del frontend.
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -49,9 +45,31 @@ pub struct UsuarioActualizable {
     pub estado: String,
 }
 
-// Manejo de errores
-#[derive(Serialize, Deserialize)]
-pub struct ApiError {
-    pub code: String,
-    pub message: String,
+
+// estructuras que existen en frontend en types/api-types.ts
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, FromRow)]
+pub struct LoggedInUser {
+    pub usuario: String,
+    pub nombre: Option<String>, // <-- CORREGIDO: Ahora es un Option<String>
+    // Puedes añadir otros campos que necesites, como rol, etc.
+}
+
+#[derive(Debug, Serialize, Deserialize, FromRow, Clone)]
+pub struct User {
+    pub usuario: String,
+    pub nombre: String,
+    pub correo: String,
+}
+// Tipo para la respuesta completa del login del backend
+#[derive(Debug, Serialize, Deserialize)]
+pub struct LoginResponse {
+    pub token: String,
+    pub user: User,
+    pub permissions: Vec<String>,
+}
+#[derive(Debug, Deserialize, Serialize)]
+pub struct LoginData {
+    pub usuario: String,
+    pub password: String,
 }
