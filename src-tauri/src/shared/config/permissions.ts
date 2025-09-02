@@ -1,5 +1,8 @@
 // src/shared/config/permissions.ts
 
+import { FaHome, FaCogs, FaDatabase, FaQuestionCircle } from 'react-icons/fa';
+import { IconType } from 'react-icons';
+
 // Tipo para las acciones de permisos individuales (ej. 'read', 'create')
 export type ActionType = 'read' | 'create' | 'update' | 'delete' | 'export' | 'help';
 
@@ -14,7 +17,7 @@ export interface PermissionItem {
     id: string;
     name: string;
     path?: string;
-    icon?: string;
+    icon?: IconType; // ⭐ El tipo ahora es IconType
     permissions: ActionType[];
     children?: { [key: string]: PermissionItem };
     actions?: { [key: string]: PermissionAction };
@@ -29,27 +32,27 @@ export const permissionsMap = {
     //
     'dashboard': {
         id: 'dashboard',
-        name: 'Dashboard',
+        name: 'Inicio',
         path: '/dashboard',
-        icon: 'FaHome',
-        permissions: ['read'],
+        icon: FaHome, // ⭐ ¡Ahora es un componente!
+        permissions: ['inicio', 'read'],
     },
     'system_administration_menu': {
         id: 'system_administration_menu',
         name: 'Administración del Sistema',
         path: '/administracion',
-        icon: 'FaCogs',
-        permissions: ['read'],
+        icon: FaCogs, // ⭐ ¡Ahora es un componente!
+        permissions: ['administracion'],
         children: {
             'users_module': {
                 id: 'users_module',
                 name: 'Usuarios',
                 path: '/administracion/usuarios',
-                icon: 'FaUsers',
-                permissions: ['read', 'create', 'update', 'delete', 'export'],
+                //icon: 'FaUsers',
+                permissions: ['lista_usuarios', 'create', 'update', 'delete', 'export'],
                 actions: {
-                    'button_add_user': { id: 'button_add_user', permissions: ['create'] },
-                    'action_edit_user': { id: 'action_edit_user', permissions: ['update'] },
+                    'button_add_user': { id: 'button_add_user', permissions: ['agregar_usuario'] },
+                    'action_edit_user': { id: 'action_edit_user', permissions: ['editar_usuario'] },
                     'action_delete_user': { id: 'action_delete_user', permissions: ['delete'] },
                     'action_reset_password': { id: 'action_reset_password', permissions: ['update'] },
                     'action_export_users': { id: 'action_export_users', permissions: ['export'] },
@@ -59,14 +62,14 @@ export const permissionsMap = {
                 id: 'roles_module',
                 name: 'Roles',
                 path: '/administracion/roles',
-                icon: 'FaUserTie',
+                //icon: 'FaUserTie',
                 permissions: ['read', 'create', 'update', 'delete'],
             },
             'permissions_module': {
                 id: 'permissions_module',
                 name: 'Permisos',
                 path: '/administracion/permisos',
-                icon: 'FaShieldAlt',
+                //icon: 'FaShieldAlt',
                 permissions: ['read', 'update'],
             }
         }
@@ -75,8 +78,8 @@ export const permissionsMap = {
         id: 'views_menu',
         name: 'Vistas de Datos',
         path: '/vistas',
-        icon: 'FaDatabase',
-        permissions: ['read'],
+        icon: FaDatabase, // ⭐ ¡Ahora es un componente!
+        permissions: ['vistas'],
         children: {
             'views_management': {
                 id: 'views_management',
@@ -108,8 +111,8 @@ export const permissionsMap = {
         id: 'help_menu',
         name: 'Ayuda y Soporte',
         path: '/help',
-        icon: 'FaQuestionCircle',
-        permissions: ['read'],
+        icon: FaQuestionCircle, // ⭐ ¡Ahora es un componente!
+        permissions: ['ayuda'],
         children: {
             'conceptual_help': {
                 id: 'conceptual_help',

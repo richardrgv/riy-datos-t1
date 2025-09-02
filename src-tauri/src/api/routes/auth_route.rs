@@ -35,19 +35,11 @@ pub async fn login_user_handler(
             
             // 1. Obtiene los permisos del usuario (esto puede ser una función).
             let permissions = vec![
-                "administrar_usuarios".to_string(), // <-- Permiso para ver el menú principal
-                "lista_usuarios".to_string(),
-                "agregar_usuario".to_string(),
-                "editar_usuario".to_string(),
-                "ver_usuario".to_string(),
-                "roles_usuario".to_string(),
-		        "mis_consultas".to_string(),
-                "todas_las_consultas".to_string(),
-                "lista_menu".to_string(),
-                "agregar_menu".to_string(),
-                "editar_menu".to_string(),
-                "eliminar_menu".to_string(),
-                "ver_menu".to_string(),
+                "inicio".to_string(), // <-- Permiso para ver el menú principal
+                "administracion".to_string(), 
+                "vistas".to_string(), 
+                "ayuda".to_string(), 
+                
                 // ... Agrega los demás permisos del usuario
             ];
 

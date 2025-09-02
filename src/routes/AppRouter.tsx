@@ -7,45 +7,42 @@ asegurando que los componentes correctos se muestren en las URLs adecuadas,
 y que se apliquen las reglas de protección (como la autenticación) de manera uniforme.
 */
 
+// src/routes/AppRouter.tsx
+
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import MainLayout from '../layouts/MainLayout';
 import Login from '../pages/Login';
 import NotFound from '../pages/NotFound';
 import { useUser } from '../contexts/UserContext';
-import { PermissionProvider, usePermissions } from '../contexts/PermissionContext';
-import { permissionsMap } from '../../src-tauri/src/shared/config/permissions';
-import { generateRoutesFromMap } from './routeUtils';
+import { PermissionProvider } from '../contexts/PermissionContext';
 
-/* Importa todos tus componentes de página aquí
-import Dashboard from '../pages/Dashboard';
-import ListaDeUsuarios from '../pages/Usuarios/ListaDeUsuarios';
-import RolesYPermisos from '../pages/Usuarios/RolesYPermisos';
-*/
 const AppRouter: React.FC = () => {
-    const { user } = useUser();
-    const userPermissions = usePermissions();
-
-    // 1. Usamos el mapa de permisos para generar las rutas dinámicamente
-    const protectedRoutes = generateRoutesFromMap(permissionsMap, userPermissions);
+    // ⭐ Obtén los permisos directamente del hook, ya que tu UserContext los provee
+    const { user, permissions } = useUser();
+ 
+    // ⭐ Punto de depuración: Aquí se reciben los permisos desde el contexto del usuario.
+    console.log("Permisos asignados al usuario:", permissions);
 
     return (
         <BrowserRouter>
             <Routes>
                 {/* 1. Ruta pública de inicio de sesión */}
                 <Route path="/login" element={<Login />} />
-                
-                {/* 2. Ruta principal protegida */}
-                <Route element={user ? (
-                    <PermissionProvider permissions={user.permissions}>
-                        <MainLayout />
-                    </PermissionProvider>
-                ) : (
-                    <Navigate to="/login" />
-                )}>
-                    {/* ⭐ Añadimos las rutas generadas dinámicamente aquí */}
-                    {protectedRoutes}
-                </Route>
+
+                {/* 2. El proveedor de permisos envuelve el MainLayout */}
+                <Route
+                    path="/*" // ⭐ Captura todas las rutas bajo un solo punto de entrada
+                    element={
+                        user ? (
+                            <PermissionProvider permissions={permissions}>
+                                <MainLayout />
+                            </PermissionProvider>
+                        ) : (
+                            <Navigate to="/login" />
+                        )
+                    }
+                />
                 
                 {/* 3. Ruta de fallback (404) */}
                 <Route path="*" element={<NotFound />} />

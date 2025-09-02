@@ -9,12 +9,16 @@ El componente <Outlet /> es el que hace que las rutas anidadas funcionen.
 Cuando AppRouter renderiza el MainLayout para la ruta /, 
 el <Outlet /> en MainLayout se llena con el componente de la ruta hija, como Home.tsx.
 */
-// src/layouts/MainLayout.tsx
+
+// src/layouts/MainLayout.tsx (Modificado)
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useLocation, Outlet, useNavigate } from 'react-router-dom';
+import { useLocation, Outlet, useNavigate, Routes, Route } from 'react-router-dom';
 import Menu from '../components/Menu';
 import { findTitleByPath } from '../utils/titleUtils';
+import { usePermissions } from '../contexts/PermissionContext';
+import { permissionsMap } from '../../src-tauri/src/shared/config/permissions';
+import { generateRoutesFromMap } from '../routes/routeUtils';
 import './MainLayout.css';
 
 const MainLayout: React.FC = () => {
@@ -23,6 +27,7 @@ const MainLayout: React.FC = () => {
     const [windowTitle, setWindowTitle] = useState('Mi Aplicación');
     const location = useLocation();
     const navigate = useNavigate();
+    const { permissions } = usePermissions(); // ⭐ Obtén los permisos aquí
 
     const [selectedValue, setSelectedValue] = useState('');
 
@@ -59,15 +64,15 @@ const MainLayout: React.FC = () => {
         </select>
     );
 
+    // ⭐ Generamos las rutas protegidas para renderizar aquí
+    const protectedRoutes = generateRoutesFromMap(permissionsMap, permissions);
+
     return (
         <div className="main-layout-container">
-             {/* ⭐ El sidebar ahora es el contenedor principal del menú */}
             <aside className={`sidebar ${isMenuOpen ? '' : 'closed'}`}>
-                {/* ⭐ Título condicional del menú */}
                 <div className="menu-header">
                     {isMenuOpen ? 'Menú Principal' : 'Menú'}
                 </div>
-                {/* Pasamos el estado al componente Menu */}
                 <Menu isMenuOpen={isMenuOpen} />
             </aside>
             <main className="content-area">
@@ -83,8 +88,10 @@ const MainLayout: React.FC = () => {
                     )}
                 </header>
                 <div className="content-body">
-                    {/* ⭐ Pasa el estado y las funciones al componente hijo */}
-                    <Outlet context={{ setChildTabs, setSelectedValue }} />
+                    {/* ⭐ Aquí se renderizarán las rutas dinámicas */}
+                    <Routes>
+                        {protectedRoutes}
+                    </Routes>
                 </div>
                 <footer>
                     © 2025 RIY Datos | Todos los derechos reservados.

@@ -19,76 +19,113 @@ con la cerradura de la página (el permiso definido en routeUtils).
 
 // src/components/Menu.tsx
 
-import React from 'react';
+import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { sidebarRoutes } from '../routes/routeUtils';
+import { permissionsMap, PermissionItem } from '../../src-tauri/src/shared/config/permissions';
+import { usePermissions } from '../contexts/PermissionContext';
 import './Menu.css';
+import { IconType } from 'react-icons';
 
-interface MenuItemProps {
-    item: any; // Ajusta el tipo de `item` según la estructura de `sidebarRoutes`
-    isMenuOpen: boolean;
-    level?: number; // Para controlar la indentación
+interface SubMenuPopupProps {
+    parentItem: PermissionItem;
+    userPermissions: string[];
+    onClose: () => void;
 }
 
-// ⭐ Componente auxiliar para un solo elemento del menú
-const MenuItem: React.FC<MenuItemProps> = ({ item, isMenuOpen, level = 0 }) => {
-    const paddingLeft = (level * 20) + (level === 0 ? 0 : 20); // Ajusta la indentación según el nivel
-
-    // Si el ítem tiene hijos, renderiza un submenú
-    if (item.children && item.children.length > 0) {
-        return (
-            <li className="menu-item has-children" style={{ paddingLeft: `${paddingLeft}px` }}>
-                <div
-                    className="menu-parent"
-                    title={item.name}
-                >
-                    {/* ⭐ Manejo del icono: si existe, se muestra. Si no, se mantiene un espacio */}
-                    {item.icon && <span className="menu-icon">{item.icon}</span>}
-                    {!item.icon && isMenuOpen && <span className="menu-icon-placeholder"></span>} {/* Espacio si no hay icono y menú abierto */}
-                    {!item.icon && !isMenuOpen && <span className="menu-icon-hidden"></span>} {/* Espacio si no hay icono y menú cerrado (oculto) */}
-
-                    <span className={`menu-text ${!isMenuOpen ? 'hidden' : ''}`}>{item.name}</span>
-                </div>
-                <ul className="submenu-list">
-                    {/* Llamada recursiva, pasando la prop `isMenuOpen` y aumentando el nivel */}
-                    {item.children.map((child, index) => (
-                        <MenuItem key={index} item={child} isMenuOpen={isMenuOpen} level={level + 1} />
-                    ))}
-                </ul>
-            </li>
-        );
-    }
-  
-
-    // Si no tiene hijos, renderiza un enlace con el ícono
-    return (
-        <li className="menu-item" style={{ paddingLeft: `${paddingLeft}px` }}>
-            <NavLink
-                to={item.path}
-                className={({ isActive }) => `menu-link ${isActive ? 'active' : ''}`}
-                title={item.name}
-            >
-                {/* ⭐ Manejo del icono: si existe, se muestra. Si no, se mantiene un espacio */}
-                {item.icon && <span className="menu-icon">{item.icon}</span>}
-                {!item.icon && isMenuOpen && <span className="menu-icon-placeholder"></span>}
-                {!item.icon && !isMenuOpen && <span className="menu-icon-hidden"></span>}
-
-                <span className={`menu-text ${!isMenuOpen ? 'hidden' : ''}`}>{item.name}</span>
-            </NavLink>
-        </li>
+const SubMenuPopup: React.FC<SubMenuPopupProps> = ({ parentItem, userPermissions, onClose }) => {
+    const accessibleChildren = Object.values(parentItem.children || {}).filter(
+        child => child.permissions.some(perm => userPermissions.includes(perm))
     );
 
-};
+    if (accessibleChildren.length === 0) {
+        return null;
+    }
 
-// ⭐ El componente principal del menú
-const Menu: React.FC<MenuProps> = ({ isMenuOpen }) => {
     return (
-        <nav className="menu-container">
-            <ul className="menu-list">
-                {sidebarRoutes.map((route, index) => (
-                    <MenuItem key={index} item={route} isMenuOpen={isMenuOpen} level={0} />
+        <div className="submenu-popup-container">
+            <div className="submenu-popup-header">
+                <h3>{parentItem.name}</h3>
+                <button onClick={onClose}>&times;</button>
+            </div>
+            <ul className="submenu-list">
+                {accessibleChildren.map(child => (
+                    <li key={child.id}>
+                        <NavLink
+                            to={child.path || '#'}
+                            className={({ isActive }) => `menu-link ${isActive ? 'active' : ''}`}
+                            onClick={onClose}
+                        >
+                            {child.name}
+                        </NavLink>
+                    </li>
                 ))}
             </ul>
+        </div>
+    );
+};
+
+interface MenuProps {
+    isMenuOpen: boolean;
+}
+
+const Menu: React.FC<MenuProps> = ({ isMenuOpen }) => {
+    const { permissions } = usePermissions();
+    const [openPopup, setOpenPopup] = useState<PermissionItem | null>(null);
+    const [hoveredItemId, setHoveredItemId] = useState<string | null>(null);
+
+    const topLevelItems = Object.values(permissionsMap).filter(item => {
+        const hasPermission = item.permissions.some(perm => permissions.includes(perm));
+        return hasPermission;
+    });
+
+    const handleMenuItemClick = (item: PermissionItem) => {
+        if (item.children) {
+            setOpenPopup(item);
+        } else {
+            setOpenPopup(null);
+        }
+    };
+
+    return (
+        <nav className={`menu-container ${isMenuOpen ? 'open' : 'closed'}`}>
+            <ul className="menu-list">
+                {topLevelItems.map(item => (
+                    <li
+                        key={item.id}
+                        className="menu-item"
+                        onMouseEnter={() => setHoveredItemId(item.id)}
+                        onMouseLeave={() => setHoveredItemId(null)}
+                    >
+                        {item.children ? (
+                            <button className="menu-link" onClick={() => handleMenuItemClick(item)}>
+                                {item.icon && <span className="menu-icon"><item.icon /></span>}
+                                <span className="menu-text">{item.name}</span>
+                                {hoveredItemId === item.id && !isMenuOpen && (
+                                    <span className="menu-tooltip">{item.name}</span>
+                                )}
+                            </button>
+                        ) : (
+                            <NavLink
+                                to={item.path || '#'}
+                                className={({ isActive }) => `menu-link ${isActive ? 'active' : ''}`}
+                            >
+                                {item.icon && <span className="menu-icon"><item.icon /></span>}
+                                <span className="menu-text">{item.name}</span>
+                                {hoveredItemId === item.id && !isMenuOpen && (
+                                    <span className="menu-tooltip">{item.name}</span>
+                                )}
+                            </NavLink>
+                        )}
+                    </li>
+                ))}
+            </ul>
+            {openPopup && (
+                <SubMenuPopup
+                    parentItem={openPopup}
+                    userPermissions={permissions}
+                    onClose={() => setOpenPopup(null)}
+                />
+            )}
         </nav>
     );
 };

@@ -1,5 +1,15 @@
 /* src/components/Menu.css */
 
+.menu-container {
+    width: 100%;
+    height: 100%;
+    background-color: #f8f9fa;
+    padding: 10px 0;
+    box-sizing: border-box;
+    overflow-y: auto;
+    transition: width 0.3s ease-in-out;
+}
+
 .menu-list, .submenu-list {
     list-style: none;
     padding: 0;
@@ -7,94 +17,191 @@
 }
 
 .menu-item {
+    position: relative;
     margin-bottom: 5px;
 }
 
-.menu-item > .menu-link,
-.menu-item > .menu-parent {
-    box-sizing: border-box;
+/* ⭐ SOLUCIÓN DEFINITIVA DEL TOOLTIP ⭐ */
+.menu-tooltip {
+    /* Las propiedades display: none; y overflow: hidden; han sido eliminadas */
+    position: absolute;
+    left: calc(100% + 10px);
+    top: 50%;
+    transform: translateY(-50%);
+    background-color: #333;
+    color: #fff;
+    padding: 5px 10px;
+    border-radius: 4px;
+    white-space: nowrap;
+    z-index: 1000;
+    pointer-events: none;
+}
+/* ⭐ EL TOOLTIP SE MUESTRA CON LA LÓGICA DE REACT ⭐ */
+
+/* ⭐ Reglas base para todos los enlaces del menú ⭐ */
+.menu-link {
     display: flex;
-    align-items: center;
+    align-items: center; 
+    gap: 12px;
+    box-sizing: border-box;
     text-decoration: none;
     color: #495057;
+    border: 1px solid #dee2e6;
     border-radius: 4px;
     transition: background-color 0.2s, color 0.2s;
     font-size: 1rem;
     cursor: pointer;
-    overflow: hidden;
-    white-space: nowrap;
+}
+
+/* ⭐ Reiniciar estilos por defecto del botón para que se comporte como un enlace ⭐ */
+.menu-item button.menu-link {
+    background: none;
+    border: 1px solid #dee2e6;
+    padding: 0;
+    font: inherit;
+    color: inherit;
     width: 100%;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    gap: 12px;
 }
 
-.menu-item > .menu-parent {
-    font-weight: bold;
-    color: #343a40;
-}
-
-.menu-item > .menu-link:hover,
-.menu-item > .menu-parent:hover {
-    background-color: #e2e6ea;
-}
-
-.menu-item > .menu-link.active {
-    background-color: #007bff;
-    color: white;
-}
-.menu-item > .menu-link.active:hover {
-    background-color: #0072e1;
-}
-
+/* Estilos de ícono y texto compartidos */
 .menu-icon {
-    min-width: 20px;
-    flex-basis: 20px;
-    text-align: center;
-    font-size: 1.2em;
-    margin-right: 15px;
+    min-width: 24px;
+    flex-basis: 24px;
     display: flex;
     justify-content: center;
     align-items: center;
+    font-size: 1.3em;
     flex-shrink: 0;
 }
 
 .menu-text {
     flex-grow: 1;
     overflow: hidden;
+    white-space: nowrap;
     text-overflow: ellipsis;
-    transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
-.menu-text.hidden {
+/* ⭐ ESTILOS PARA MENÚ ABIERTO (.open) ⭐ */
+.menu-container.open {
+    width: 280px;
+}
+
+.menu-container.open .menu-link {
+    width: calc(100% - 30px);
+    margin: 0 15px;
+    padding: 10px 15px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* ⭐ ESTILOS PARA MENÚ CERRADO (.closed) ⭐ */
+.menu-container.closed {
+    width: 80px;
+    overflow: visible;
+    z-index: 1000;
+}
+.menu-container.closed .menu-link {
+    width: 50px;
+    height: 50px;
+    margin: 0 auto;
+    justify-content: center;
+    padding: 10px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.menu-container.closed .menu-icon {
+    margin-right: 0;
+}
+.menu-container.closed .menu-text {
     display: none;
 }
 
-.sidebar.closed .menu-link,
-.sidebar.closed .menu-parent {
-    padding: 10px 0;
-    justify-content: center;
+/* Estilos de hover y activo */
+.menu-link:hover {
+    background-color: #e2e6ea;
+}
+.menu-link.active {
+    background-color: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+
+/* --- Estilos del Submenú Pop-up --- */
+.submenu-popup-container {
+    position: absolute;
+    top: 0;
+    left: calc(var(--sidebar-width, 60px) + 10px);
+    width: 280px;
+    min-height: 100vh;
+    background-color: #fff;
+    border-left: 1px solid #dee2e6;
+    box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+    z-index: 1000;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+}
+
+.submenu-popup-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.submenu-popup-header h3 {
+    margin: 0;
+    font-size: 1.2rem;
+    color: #343a40;
+}
+
+.submenu-popup-header button {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #495057;
+    transition: color 0.2s ease;
+}
+
+.submenu-popup-header button:hover {
+    color: #dc3545;
+}
+
+.submenu-popup-container .submenu-list .menu-link {
     width: 100%;
-    overflow: visible;
+    margin: 0;
+    padding: 10px;
 }
 
-.sidebar.closed .menu-icon {
-    margin-right: 0;
+.submenu-popup-container .submenu-list .menu-link:hover {
+    background-color: #f1f3f5;
 }
 
-.submenu-list {
-    padding-left: 0;
-}
+/* Oculta completamente el menú cerrado en pantallas pequeñas  
+@media (max-width: 768px) {
+    .menu-container.closed {
+        width: 0;
+        overflow: hidden;
+*/       
 
-/* ⭐ Regla simplificada para la indentación */
-.menu-item > .menu-link,
-.menu-item > .menu-parent {
-    padding: 10px 15px;
-}
-
-.menu-item[data-level='1'] > .menu-link,
-.menu-item[data-level='1'] > .menu-parent {
-    padding-left: 40px;
-}
-
-.menu-item[data-level='2'] > .menu-link,
-.menu-item[data-level='2'] > .menu-parent {
-    padding-left: 60px;
+/* ⭐⭐ CORRECCIÓN FINAL PARA MÓVILES ⭐⭐ */
+@media (max-width: 768px) {
+    .menu-container.closed {
+        width: 80px; /* Mantener el ancho fijo de 80px */
+        position: fixed; /* Asegura que el menú se quede fijo */
+        overflow: visible; /* Asegura que el tooltip se vea */
+    }
+    
+    .menu-container.open {
+        width: 100%; /* Ocupa todo el ancho cuando está abierto */
+        position: fixed; /* Se superpone a otros elementos cuando está abierto */
+        z-index: 1000;
+    }
 }
