@@ -7,8 +7,6 @@ body {
   overflow: hidden;
 }
 
-
-/* */
 .main-layout-container {
     display: flex;
     height: 100vh;
@@ -27,26 +25,24 @@ body {
 }
 
 .sidebar.closed {
-    width: 60px; /* ⭐ Ancho reducido */
-    padding: 20px 0; /* ⭐ Reduce el padding lateral */
+    width: 60px;
+    padding: 20px 0;
 }
 
 .sidebar.closed .menu-header {
-    text-align: center; /* ⭐ Centra el texto "Menú" en modo cerrado */
-    padding: 0; /* Sin padding horizontal cuando está cerrado */
+    text-align: center;
+    padding: 0;
 }
 
-/* ⭐ Estilo para el encabezado del menú */
 .menu-header {
     font-size: 1.2rem;
     font-weight: 700;
     color: #343a40;
     margin-bottom: 20px;
-    padding: 0 10px; /* ⭐ Agrega un padding para que el texto no esté pegado al borde */
-    text-align: left; /* ⭐ Alinea el texto a la izquierda en modo abierto */
+    padding: 0 10px;
+    text-align: left;
 }
 
-/* ⭐ Estilo para los enlaces de navegación */
 .menu-list a {
     text-decoration: none;
     color: #495057;
@@ -67,13 +63,6 @@ body {
     color: white;
 }
 
-
-
-/* */
-
-
-
-
 .content-area {
   flex-grow: 1;
   display: flex;
@@ -84,20 +73,15 @@ body {
   position: relative;
 }
 
-
-/* src/layouts/MainLayout.css */
-
-/* Contenedor del encabezado principal */
 .content-header {
-    display: flex; /* ⭐ Usa flexbox para alinear elementos */
-    align-items: center; /* ⭐ Centra verticalmente los elementos */
-    padding: 15px 20px; /* Ajusta el padding para reducir la altura */
+    display: flex;
+    align-items: center;
+    padding: 15px 20px;
     background-color: #fff;
     border-bottom: 1px solid #ddd;
     box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
-/* Estilos para el botón "Abrir Menú" */
 .content-header .menu-toggle-button {
     background-color: transparent;
     border: 1px solid #ccc;
@@ -106,10 +90,10 @@ body {
     border-radius: 4px;
     cursor: pointer;
     font-size: 0.9rem;
-    margin-right: 20px; /* ⭐ Aumenta el margen para separarlo del título */
+    margin-right: 20px;
     transition: background-color 0.2s ease, border-color 0.2s ease;
-    height: 38px; /* ⭐ Establece una altura fija para alinear con el título */
-    display: flex; /* Para centrar el texto si es necesario */
+    height: 38px;
+    display: flex;
     align-items: center;
     justify-content: center;
 }
@@ -119,38 +103,20 @@ body {
     border-color: #999;
 }
 
-/* Estilos para el título "RIY Datos" */
 .content-header h1 {
     font-size: 1.8rem;
     font-weight: 700;
     color: #333;
     margin: 0;
     line-height: 1;
-    margin-left: 20px; /* ⭐ Agrega margen a la izquierda para separarlo del botón */
+    margin-left: 20px;
 }
 
-/* Si tienes otros elementos en el encabezado (como un dropdown global, etc.) */
 .content-header .title-and-dropdown-wrapper {
     display: flex;
     align-items: center;
-    gap: 15px; /* Espacio entre el título principal y otros elementos */
+    gap: 15px;
 }
-
-
-/*
-.header-right-content-wrapper {  
-  flex-shrink: 0;
-}
-
-.header-right-content-wrapper select {
-  padding: 0.5rem 1rem;
-  border: 1px solid #dee2e6;
-  border-radius: 0.25rem;
-  background-color: white;
-  font-size: 1rem;
-  cursor: pointer;
-}
-*/
 
 .content-body {
   flex-grow: 1;
@@ -169,4 +135,53 @@ body {
 
 .footer-separator {
   margin: 0 10px;
+}
+
+/* ⭐⭐ CORRECCIÓN FINAL PARA MÓVILES ⭐⭐ */
+@media (max-width: 768px) {
+    .main-layout-container {
+        flex-direction: column;
+        overflow-x: hidden; 
+    }
+
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100vh;
+        z-index: 1000;
+        /* ⭐⭐ CAMBIO CLAVE: FUERZA LA ANCHURA AL 100% EN MÓVILES ⭐⭐ */
+        width: 100% !important;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease-in-out;
+        border-right: none; 
+        box-shadow: none;
+    }
+
+    .sidebar.open {
+        transform: translateX(0);
+        box-shadow: 2px 0 10px rgba(0,0,0,0.2);
+    }
+    
+    .sidebar.closed {
+        transform: translateX(-100%);
+    }
+
+    .content-area {
+        margin-left: 0;
+    }
+
+    /* ⭐⭐ CORRECCIÓN PARA EL FOOTER EN MÓVILES ⭐⭐ */
+    .app-footer {
+        flex-direction: column;
+        flex-shrink: 1; 
+        font-size: 0.7rem; 
+        padding: 10px;
+        text-align: center;
+        white-space: normal;
+    }
+
+    .footer-separator {
+        display: none;
+    }
 }

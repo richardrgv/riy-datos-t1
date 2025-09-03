@@ -1,24 +1,5 @@
 // src/components/Menu.tsx 
 
-/* Se encarga de la navegación
-
-Piensa en el proceso como una llave y una cerradura.
-La base de datos te da la llave. Durante el proceso de inicio de sesión, 
-el backend verifica tus credenciales y te devuelve una "llave" (tus permisos) 
-que dice lo que puedes y no puedes hacer. 
-Esta llave se almacena en el UserContext y está disponible en toda tu aplicación.
-
-routeUtils define las cerraduras. El archivo routeUtils es un mapa estático que dice: 
-"Para acceder a la página de Usuarios, necesitas una llave con la etiqueta can_view_users." 
-Esta configuración es fija y no cambia por usuario.
-
-usePermissions es el mecanismo de verificación. 
-Este hook compara tu llave (los permisos del UserContext) 
-con la cerradura de la página (el permiso definido en routeUtils).
-*/
-
-// src/components/Menu.tsx
-
 import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { permissionsMap, PermissionItem } from '../../src-tauri/src/shared/config/permissions';
@@ -66,9 +47,11 @@ const SubMenuPopup: React.FC<SubMenuPopupProps> = ({ parentItem, userPermissions
 
 interface MenuProps {
     isMenuOpen: boolean;
+    // ⭐ Definimos la propiedad para recibir la función
+    toggleMenu: () => void;
 }
 
-const Menu: React.FC<MenuProps> = ({ isMenuOpen }) => {
+const Menu: React.FC<MenuProps> = ({ isMenuOpen, toggleMenu }) => {
     const { permissions } = usePermissions();
     const [openPopup, setOpenPopup] = useState<PermissionItem | null>(null);
     const [hoveredItemId, setHoveredItemId] = useState<string | null>(null);
@@ -82,6 +65,10 @@ const Menu: React.FC<MenuProps> = ({ isMenuOpen }) => {
         if (item.children) {
             setOpenPopup(item);
         } else {
+            // ⭐ CERRAMOS EL MENÚ SOLO SI ES UN ENLACE DE NAVEGACIÓN
+            if (isMenuOpen && window.innerWidth <= 768) {
+                toggleMenu();
+            }
             setOpenPopup(null);
         }
     };
@@ -108,6 +95,12 @@ const Menu: React.FC<MenuProps> = ({ isMenuOpen }) => {
                             <NavLink
                                 to={item.path || '#'}
                                 className={({ isActive }) => `menu-link ${isActive ? 'active' : ''}`}
+                                // ⭐ USAMOS EL HANDLER DE CLIC PARA CERRAR EL MENÚ
+                                onClick={() => {
+                                    if (isMenuOpen && window.innerWidth <= 768) {
+                                        toggleMenu();
+                                    }
+                                }}
                             >
                                 {item.icon && <span className="menu-icon"><item.icon /></span>}
                                 <span className="menu-text">{item.name}</span>

@@ -1,17 +1,5 @@
 // src/layouts/MainLayout.tsx
 
-/* Se encarga del diseño visual
-
-para que solo se encargue del diseño (encabezado, pie de página, menú y área de contenido) 
-y delegue la responsabilidad de renderizar las páginas a la etiqueta <Outlet> de React Router.
-
-El componente <Outlet /> es el que hace que las rutas anidadas funcionen. 
-Cuando AppRouter renderiza el MainLayout para la ruta /, 
-el <Outlet /> en MainLayout se llena con el componente de la ruta hija, como Home.tsx.
-*/
-
-// src/layouts/MainLayout.tsx (Modificado)
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, Outlet, useNavigate, Routes, Route } from 'react-router-dom';
 import Menu from '../components/Menu';
@@ -27,8 +15,7 @@ const MainLayout: React.FC = () => {
     const [windowTitle, setWindowTitle] = useState('Mi Aplicación');
     const location = useLocation();
     const navigate = useNavigate();
-    const { permissions } = usePermissions(); // ⭐ Obtén los permisos aquí
-
+    const { permissions } = usePermissions();
     const [selectedValue, setSelectedValue] = useState('');
 
     useEffect(() => {
@@ -64,16 +51,16 @@ const MainLayout: React.FC = () => {
         </select>
     );
 
-    // ⭐ Generamos las rutas protegidas para renderizar aquí
     const protectedRoutes = generateRoutesFromMap(permissionsMap, permissions);
 
     return (
         <div className="main-layout-container">
-            <aside className={`sidebar ${isMenuOpen ? '' : 'closed'}`}>
+            {/* ⭐ Pasamos la función 'toggleMenu' al componente 'Menu' */}
+            <aside className={`sidebar ${isMenuOpen ? 'open' : 'closed'}`}>
                 <div className="menu-header">
                     {isMenuOpen ? 'Menú Principal' : 'Menú'}
                 </div>
-                <Menu isMenuOpen={isMenuOpen} />
+                <Menu isMenuOpen={isMenuOpen} toggleMenu={toggleMenu} />
             </aside>
             <main className="content-area">
                 <header className="content-header">
@@ -88,7 +75,6 @@ const MainLayout: React.FC = () => {
                     )}
                 </header>
                 <div className="content-body">
-                    {/* ⭐ Aquí se renderizarán las rutas dinámicas */}
                     <Routes>
                         {protectedRoutes}
                     </Routes>

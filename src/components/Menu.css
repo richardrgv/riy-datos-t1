@@ -102,8 +102,6 @@
 /* ⭐ ESTILOS PARA MENÚ CERRADO (.closed) ⭐ */
 .menu-container.closed {
     width: 80px;
-    overflow: visible;
-    z-index: 1000;
 }
 .menu-container.closed .menu-link {
     width: 50px;
@@ -184,24 +182,17 @@
     background-color: #f1f3f5;
 }
 
-/* Oculta completamente el menú cerrado en pantallas pequeñas  
-@media (max-width: 768px) {
-    .menu-container.closed {
-        width: 0;
-        overflow: hidden;
-*/       
-
 /* ⭐⭐ CORRECCIÓN FINAL PARA MÓVILES ⭐⭐ */
 @media (max-width: 768px) {
-    .menu-container.closed {
-        width: 80px; /* Mantener el ancho fijo de 80px */
-        position: fixed; /* Asegura que el menú se quede fijo */
-        overflow: visible; /* Asegura que el tooltip se vea */
+    /* ⭐⭐ CAMBIO CLAVE: FUERZA LA ANCHURA DEL MENÚ PRINCIPAL AL 100% ⭐⭐ */
+    .menu-container.open {
+        width: 100% !important;
+        min-width: 0 !important;
     }
     
-    .menu-container.open {
-        width: 100%; /* Ocupa todo el ancho cuando está abierto */
-        position: fixed; /* Se superpone a otros elementos cuando está abierto */
-        z-index: 1000;
-    }
-}
+    .submenu-popup-container {
+        /* ⭐⭐ CAMBIO CLAVE: FUERZA LA ANCHURA DEL SUBMENÚ AL 100% Y REUBICA ⭐⭐ */
+        width: 100% !important; 
+        left: 0 !important;
+        box-sizing: border-box;
+        min-

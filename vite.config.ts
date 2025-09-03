@@ -24,6 +24,16 @@ export default defineConfig(async () => ({
     envDir: '.', // This assumes the .env file is in the same directory as vite.config.ts
     // This is the key line
     envPrefix: ['VITE_', 'VITE_REACT_APP_'],
+    // ngrok para ver desde mi celular
+    host: '0.0.0.0', // Este paso ya lo habías hecho
+    allowedHosts: ['283f23f27aed.ngrok-free.app'], // Agrega aquí la URL de ngrok
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3000', // **IMPORTANTE: CAMBIA ESTE PUERTO por el de tu backend**
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, '')
+      }
+    }
     /* --- NEW PROXY CONFIGURATION ---
     proxy: {
     '/api': {
