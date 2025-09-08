@@ -4,13 +4,14 @@ html,
 body {
   height: 100%;
   margin: 0;
-  overflow: hidden;
+  /* Elimina la línea 'overflow: hidden;' */
 }
 
 .main-layout-container {
-    display: flex;
-    height: 100vh;
+  display: flex;
+  min-height: 100vh; /* Permite que el contenedor crezca si el contenido lo requiere. Dynamic Viewport Height*/
 }
+
 
 .sidebar {
     width: 250px;
@@ -22,6 +23,7 @@ body {
     box-shadow: 2px 0 5px rgba(0,0,0,0.05);
     display: flex;
     flex-direction: column;
+    overflow: visible; /* Permite que el contenido se muestre fuera del contenedor */
 }
 
 .sidebar.closed {
@@ -64,7 +66,7 @@ body {
 }
 
 .content-area {
-  flex-grow: 1;
+  flex-grow: 1; /* Hace que el área de contenido ocupe todo el espacio disponible */
   display: flex;
   flex-direction: column;
   overflow-x: hidden;
@@ -72,6 +74,7 @@ body {
   min-width: 0;
   position: relative;
 }
+
 
 .content-header {
     display: flex;
@@ -137,11 +140,32 @@ body {
   margin: 0 10px;
 }
 
+/* ⭐⭐ ESTILOS DEL TOOLTIP DEL BOTÓN ⭐⭐ */
+.toggle-button-tooltip {
+  position: fixed;
+  /* top: lo controla React dinámicamente */
+  /* left: lo controla React dinámicamente */
+  transform: translateY(-50%); /* Centra verticalmente */
+  background-color: #333;
+  color: #fff;
+  padding: 5px 10px;
+  border-radius: 4px;
+  white-space: nowrap;
+  z-index: 10000;
+  pointer-events: none;
+}
+
 /* ⭐⭐ CORRECCIÓN FINAL PARA MÓVILES ⭐⭐ */
 @media (max-width: 768px) {
+    .content-area {
+        margin-left: 0;
+        /* Aquí debes hacer que el área de contenido crezca para ocupar el espacio restante */
+        flex-grow: 1; 
+    }
     .main-layout-container {
-        flex-direction: column;
-        overflow-x: hidden; 
+        display: flex;
+        flex-direction: column; /* Asegura que los hijos se apilen verticalmente */
+        min-height: 100dvh; /* Permite que el contenedor crezca si el contenido lo requiere. Dynamic Viewport Height*/
     }
 
     .sidebar {
@@ -167,9 +191,7 @@ body {
         transform: translateX(-100%);
     }
 
-    .content-area {
-        margin-left: 0;
-    }
+    
 
     /* ⭐⭐ CORRECCIÓN PARA EL FOOTER EN MÓVILES ⭐⭐ */
     .app-footer {

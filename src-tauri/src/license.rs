@@ -190,6 +190,37 @@ pub async fn save_license_credentials_command(
    //_expiration_date_for_hash: String,
 ) -> Result<bool, String> {
 
+    let pool_guard = state.db_pool.lock().await;
+    let pool_ref = pool_guard.as_ref().ok_or_else(|| "DB pool not initialized".to_string())?;
+    let aplicativo_id = *state.aplicativo_id.lock().await;
+
+
+    // Llama a la función con los 6 argumentos necesarios
+    license_logic::save_license_credentials(
+        pool_ref,
+        &state.sql_collate_clause,
+        aplicativo_id,
+        &state.palabra_clave1,
+        &state.palabra_clave2,
+        &state.db_connection_url,
+        &state.aplicativo,
+        encrypted_credentials_from_user
+    ).await
+}
+
+
+
+/* ANTES DE SEPARAR
+/// ----------------------------------------------------------------------------------
+/// COMANDO: save_license_credentials_command
+/// ----------------------------------------------------------------------------------
+#[tauri::command]
+pub async fn save_license_credentials_command(
+    state: State<'_, AppState>,
+    encrypted_credentials_from_user: String,
+   //_expiration_date_for_hash: String,
+) -> Result<bool, String> {
+
     let sql_collate_clause_ref: &str = &state.sql_collate_clause;
     let palabra_clave1 = state.palabra_clave1.clone();
     
@@ -327,50 +358,20 @@ pub async fn save_license_credentials_command(
         Ok(false)
     }
 }
+*/
 
 /// ----------------------------------------------------------------------------------
-/// Función auxiliar para desencriptar
+/// COMANDO: get_db_connection_info_command
+/// Obtiene el nombre del servidor y la base de datos de la URL de conexión.
 /// ----------------------------------------------------------------------------------
-fn decrypt_and_parse_license_data(
-    encrypted_credential_b64: &str,
-    key_str: &str,
-) -> Result<(String, String, NaiveDate, String), String> {
-    let key_bytes = hex::decode(key_str)
-        .map_err(|e| format!("Error: La PALABRA_CLAVE_1 no es un string hexadecimal válido de 32 bytes: {}", e))?;
-    
-    if key_bytes.len() != 32 {
-        return Err("Error: La PALABRA_CLAVE_1 debe ser una clave de 32 bytes (256 bits).".to_string());
-    }
-    let key = Key::<Aes256Gcm>::from_slice(&key_bytes);
-    let cipher = Aes256Gcm::new(key);
-    let decoded_bytes = general_purpose::STANDARD.decode(encrypted_credential_b64)
-        .map_err(|e| format!("Error al decodificar Base64 de la credencial: {}", e))?;
-    let nonce_len = 12;
-    let tag_len = 16;
-    if decoded_bytes.len() < nonce_len + tag_len {
-        return Err("Datos encriptados demasiado cortos para Nonce y Tag.".to_string());
-    }
-    let nonce_bytes = &decoded_bytes[..nonce_len];
-    let ciphertext_and_tag = &decoded_bytes[nonce_len..];
-    let nonce = Nonce::from_slice(nonce_bytes);
-    let plaintext_bytes = cipher.decrypt(nonce, ciphertext_and_tag)
-        .map_err(|_| "Fallo en la desencriptación. Clave, Nonce o datos inválidos. La credencial es incorrecta.".to_string())?;
-    let plaintext = String::from_utf8(plaintext_bytes)
-        .map_err(|e| format!("Los datos desencriptados no son UTF-8 válido: {}", e))?;
-    let parts: Vec<&str> = plaintext.split('|').collect();
-
-    if parts.len() != 4 {
-        return Err(format!("La cadena desencriptada tiene un formato inesperado (se esperaban 4 partes, se obtuvieron {}). Formato esperado: 'nombreServidor|baseDatos|fechaCaducidad|codigoAplicativo'.", parts.len()));
-    }
-    let server_name_from_credential = parts[0].to_string();
-    let db_name_from_credential = parts[1].to_string();
-    let fecha_caducidad_str_yyyymmdd = parts[2];
-    let fecha_caducidad = NaiveDate::parse_from_str(fecha_caducidad_str_yyyymmdd, "%Y%m%d")
-        .map_err(|e| format!("Error al parsear la fecha de caducidad (formato YYYYMMDD esperado): {}", e))?;
-    let aplicativo_code_from_credential = parts[3].to_string();
-    
-    Ok((server_name_from_credential, db_name_from_credential, fecha_caducidad, aplicativo_code_from_credential))
+#[tauri::command]
+pub async fn get_db_connection_info_command(
+    state: tauri::State<'_, AppState>
+) -> Result<(String, String), String> {
+    db::get_db_connection_info(&state.db_connection_url).await
 }
+
+
 
 
 

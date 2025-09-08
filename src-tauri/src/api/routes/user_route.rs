@@ -3,7 +3,7 @@ use actix_web::{get, post, put, HttpResponse, HttpRequest,
     Responder, web, HttpMessage, Error};
 
 use shared_lib::state::AppState;
-use shared_lib::{db, models, user_logic};
+use shared_lib::{models, user_logic};
 use shared_lib::app_errors::ApiError;
 use shared_lib::middleware::auth_claims::Claims;
 

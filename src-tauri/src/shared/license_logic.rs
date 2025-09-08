@@ -2,11 +2,15 @@
 
 // Usa una ruta relativa para acceder a los otros módulos en la misma carpeta
 use super::{db}; 
-
+use crate::db::normalize_server_name;
 use sqlx::{Pool, Mssql, Row};
-use chrono::NaiveDate; // Add the chrono import
-
+use sqlx::query;
+use chrono::{NaiveDate, Utc};
 use serde::{Serialize};
+
+use aes_gcm::{Aes256Gcm, Key, Nonce};
+use aes_gcm::aead::{Aead, KeyInit};
+use base64::{engine::general_purpose, Engine as _};
 
 /*
 #[derive(Debug, Serialize, Deserialize)]
@@ -105,21 +109,21 @@ pub async fn check_license_status(
         if hash_almacenado_hex.is_none() {
             return Ok(LicenseCheckResult {
                 status: LicenseStatus::InvalidHash,
-                message: "License hash not found. Credentials are invalid.".to_string(),
+                message: "No se encontró el hash de la licencia. Las credenciales no son válidas.".to_string(),
             });
         }
         
         let hash_almacenado_string = hash_almacenado_hex.unwrap();
 
         let fecha_caducidad_str: String = license_row.try_get("fecha_caducidad_str")
-            .map_err(|e| format!("Error reading fecha_caducidad_str: {}", e))?;
+            .map_err(|e| format!("Error al leer fecha_caducidad_str: {}", e))?;
         
         let fecha_caducidad_almacenada_dt = match chrono::NaiveDateTime::parse_from_str(&fecha_caducidad_str, "%Y-%m-%d %H:%M:%S") {
             Ok(dt) => dt,
             Err(e) => {
                 return Ok(LicenseCheckResult {
                     status: LicenseStatus::Corrupted,
-                    message: format!("License format error: Expiration date is not a valid format. {}", e),
+                    message: format!("Error de formato de licencia: La fecha de vencimiento no es un formato válido. {}", e),
                 });
             }
         };
@@ -137,7 +141,7 @@ pub async fn check_license_status(
             .bind(string_for_hash)
             .fetch_one(pool)
             .await
-            .map_err(|e| format!("Error generating CHECKSUM: {}", e))?;
+            .map_err(|e| format!("Error al generar CHECKSUM: {}", e))?;
 
         let computed_hash_string = new_hash_result.0.to_string();
 
@@ -145,25 +149,197 @@ pub async fn check_license_status(
             if fecha_caducidad_almacenada_dt.date() >= today {
                 return Ok(LicenseCheckResult {
                     status: LicenseStatus::Valid,
-                    message: "Valid and current license.".to_string(),
+                    message: "Licencia válida y vigente.".to_string(),
                 });
             } else {
                 return Ok(LicenseCheckResult {
                     status: LicenseStatus::Expired,
-                    message: "The license has expired. Please renew it.".to_string(),
+                    message: "La licencia ha expirado. Por favor, renuévela.".to_string(),
                 });
             }
         } else {
             return Ok(LicenseCheckResult {
                 status: LicenseStatus::InvalidHash,
-                message: "The license hash does not match. Invalid credentials.".to_string(),
+                message: "El hash de la licencia no coincide. Credenciales no válidas.".to_string(),
             });
         }
     } else {
         eprintln!("license_logic: Verificación de licencia completada sin encontrar un error crítico.");
         return Ok(LicenseCheckResult {
             status: LicenseStatus::NotFound,
-            message: "This is the first time the application has been started, or the license has been deleted.".to_string(),
+            message: "TEsta es la primera vez que se inicia la aplicación o se ha eliminado la licencia.".to_string(),
         });
     }
+}
+
+
+/// ----------------------------------------------------------------------------------
+/// save_license_credentials
+/// ----------------------------------------------------------------------------------
+pub async fn save_license_credentials(
+    pool: &Pool<Mssql>,
+    sql_collate_clause: &str,
+    aplicativo_id: i32,
+    palabra_clave1: &str,
+    palabra_clave2: &str,
+    db_connection_url: &str, // Agrega la URL de conexión aquí
+    aplicativo: &str,
+    encrypted_credentials_from_user: &str,
+) -> Result<bool, String> {
+
+    let sql_collate_clause_ref = sql_collate_clause;
+    
+    // Lock the necessary parts of parameters
+    let app_id = aplicativo_id;
+    let app_code = aplicativo;
+    let palabra_clave1 = palabra_clave1;
+    let palabra_clave2 = palabra_clave2;
+
+    let (
+        server_name_from_credential,
+        db_name_from_credential,
+        expiration_date_from_decrypted,
+        aplicativo_code_from_credential
+    ) = decrypt_and_parse_license_data(&encrypted_credentials_from_user, &palabra_clave1)?;
+
+    let (current_server_name, current_db_name)=
+        db::parse_mssql_connection_url(db_connection_url)?;
+    let normalized_credential_server = normalize_server_name(&server_name_from_credential);
+    let normalized_current_server = normalize_server_name(&current_server_name);
+    
+    if normalized_credential_server.to_lowercase() != normalized_current_server.to_lowercase() {
+        return Err(format!(
+            "Las credenciales no coinciden con el servidor actual de la conexión. Esperado: '{}', Obtenido en credencial: '{}'",
+            normalized_current_server, normalized_credential_server
+        ));
+    }
+
+    if db_name_from_credential.to_lowercase() != current_db_name.to_lowercase() {
+        return Err(format!(
+            "Las credenciales no coinciden con la base de datos actual de la conexión. Esperado: '{}', Obtenido en credencial: '{}'",
+            current_db_name, db_name_from_credential
+        ));
+    }
+    
+    if aplicativo_code_from_credential != *app_code {
+        return Err(format!(
+            "Las credenciales no coinciden con este aplicativo. Se esperaban credenciales para el aplicativo '{}', pero las credenciales son para: '{}'",
+            app_code, aplicativo_code_from_credential
+        ));
+    }
+
+    let string_for_hash = format!("{}|{}|{}|{}|{}",
+                                  normalized_current_server,
+                                  current_db_name,
+                                  expiration_date_from_decrypted.format("%Y-%m-%d").to_string(),
+                                  app_code,
+                                  palabra_clave2);
+    
+    let new_hash_result: (i32,) = sqlx::query_as(
+        "SELECT CHECKSUM(CAST(@p1 AS NVARCHAR(MAX)))"
+    )
+    .bind(string_for_hash)
+    .fetch_one(pool)
+    .await
+    .map_err(|e| format!("Error al generar CHECKSUM: {}", e))?;
+    
+    let new_hash_hex_string = new_hash_result.0.to_string();
+   
+    let existing_license_row_option = query(
+        "SELECT 1 FROM riy.riy_licencia WITH(NOLOCK) 
+         WHERE aplicativoID = @p1 AND nombreServidor = @p2 AND baseDatos = @p3"
+    )
+    .bind(app_id)
+    .bind(&current_server_name)
+    .bind(&current_db_name)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| format!("Error al verificar licencia existente: {}", e))?;
+    
+    let expiration_date_str = expiration_date_from_decrypted.format("%Y-%m-%d").to_string();
+
+    if existing_license_row_option.is_some() {
+        query(
+            "UPDATE riy.riy_licencia 
+                SET fechaCaducidad = @p1, 
+                credencial_encriptada = @p2, 
+                hash_licencia_hex = @p3 
+             WHERE aplicativoID = @p4 
+               AND nombreServidor = @p5 
+               AND baseDatos = @p6"
+        )
+        .bind(&expiration_date_str)
+        .bind(&encrypted_credentials_from_user)
+        .bind(&new_hash_hex_string)
+        .bind(app_id)
+        .bind(&current_server_name)
+        .bind(&current_db_name)
+        .execute(pool)
+        .await
+        .map_err(|e| format!("Error al actualizar licencia: {}", e))?;
+    } else {
+        query(
+            "INSERT INTO riy.riy_licencia (aplicativoID, nombreServidor, baseDatos, fechaCaducidad, credencial_encriptada, hash_licencia_hex) VALUES (@p1, @p2, @p3, @p4, @p5, @p6)"
+        )
+        .bind(app_id)
+        .bind(&current_server_name)
+        .bind(&current_db_name)
+        .bind(&expiration_date_str)
+        .bind(&encrypted_credentials_from_user)
+        .bind(&new_hash_hex_string)
+        .execute(pool)
+        .await
+        .map_err(|e| format!("Error al insertar licencia: {}", e))?;
+    }
+
+    let today = Utc::now().date_naive();
+    if expiration_date_from_decrypted >= today {
+        Ok(true)
+    } else {
+        Ok(false)
+    }
+}
+
+/// ----------------------------------------------------------------------------------
+/// Función auxiliar para desencriptar
+/// ----------------------------------------------------------------------------------
+fn decrypt_and_parse_license_data(
+    encrypted_credential_b64: &str,
+    key_str: &str,
+) -> Result<(String, String, NaiveDate, String), String> {
+    let key_bytes = hex::decode(key_str)
+        .map_err(|e| format!("Error: La PALABRA_CLAVE_1 no es un string hexadecimal válido de 32 bytes: {}", e))?;
+    
+    if key_bytes.len() != 32 {
+        return Err("Error: La PALABRA_CLAVE_1 debe ser una clave de 32 bytes (256 bits).".to_string());
+    }
+    let key = Key::<Aes256Gcm>::from_slice(&key_bytes);
+    let cipher = Aes256Gcm::new(key);
+    let decoded_bytes = general_purpose::STANDARD.decode(encrypted_credential_b64)
+        .map_err(|e| format!("Error al decodificar Base64 de la credencial: {}", e))?;
+    let nonce_len = 12;
+    let tag_len = 16;
+    if decoded_bytes.len() < nonce_len + tag_len {
+        return Err("Datos encriptados demasiado cortos para Nonce y Tag.".to_string());
+    }
+    let nonce_bytes = &decoded_bytes[..nonce_len];
+    let ciphertext_and_tag = &decoded_bytes[nonce_len..];
+    let nonce = Nonce::from_slice(nonce_bytes);
+    let plaintext_bytes = cipher.decrypt(nonce, ciphertext_and_tag)
+        .map_err(|_| "Fallo en la desencriptación. Clave, Nonce o datos inválidos. La credencial es incorrecta.".to_string())?;
+    let plaintext = String::from_utf8(plaintext_bytes)
+        .map_err(|e| format!("Los datos desencriptados no son UTF-8 válido: {}", e))?;
+    let parts: Vec<&str> = plaintext.split('|').collect();
+
+    if parts.len() != 4 {
+        return Err(format!("La cadena desencriptada tiene un formato inesperado (se esperaban 4 partes, se obtuvieron {}). Formato esperado: 'nombreServidor|baseDatos|fechaCaducidad|codigoAplicativo'.", parts.len()));
+    }
+    let server_name_from_credential = parts[0].to_string();
+    let db_name_from_credential = parts[1].to_string();
+    let fecha_caducidad_str_yyyymmdd = parts[2];
+    let fecha_caducidad = NaiveDate::parse_from_str(fecha_caducidad_str_yyyymmdd, "%Y%m%d")
+        .map_err(|e| format!("Error al parsear la fecha de caducidad (formato YYYYMMDD esperado): {}", e))?;
+    let aplicativo_code_from_credential = parts[3].to_string();
+    
+    Ok((server_name_from_credential, db_name_from_credential, fecha_caducidad, aplicativo_code_from_credential))
 }

@@ -37,6 +37,10 @@ pub async fn login_user_handler(
             let permissions = vec![
                 "inicio".to_string(), // <-- Permiso para ver el menú principal
                 "administracion".to_string(), 
+                    "lista_usuarios".to_string(), 
+                        "agregar_usuario".to_string(), 
+                        "editar_usuario".to_string(), 
+                    "lista_roles".to_string(), 
                 "vistas".to_string(), 
                 "ayuda".to_string(), 
                 

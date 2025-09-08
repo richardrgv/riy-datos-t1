@@ -8,6 +8,7 @@ use tokio::sync::Mutex;
 #[derive(Clone)]
 pub struct AppState {
     pub db_pool: Pool<Mssql>,
+    pub palabra_clave1: String,
     pub palabra_clave2: String,
     pub db_connection_url: String,
     pub aplicativo_id: Arc<Mutex<i32>>,

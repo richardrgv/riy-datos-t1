@@ -1,8 +1,7 @@
 // src/api/main.rs
 use actix_cors::Cors;
 use actix_web::{
-    web, App, HttpServer, 
-    HttpMessage,
+    web, App, HttpServer,
     middleware::Logger};
 use shared_lib::{db, state::AppState, middleware::auth_middleware::Authenticated};
 use dotenv::dotenv;
@@ -36,8 +35,10 @@ async fn main() -> std::io::Result<()> {
     println!("Backend web: Clausula SQL obtenida.");
 
     // AÑADE ESTOS:
+    let palabra_clave1 = std::env::var("PALABRA_CLAVE_1").expect("PALABRA_CLAVE_1 must be set");
+    println!("Backend web: Palabra clave 1 obtenida.");
     let palabra_clave2 = std::env::var("PALABRA_CLAVE_2").expect("PALABRA_CLAVE_2 must be set");
-    println!("Backend web: Palabra clave obtenida.");
+    println!("Backend web: Palabra clave 2 obtenida.");
 
     let aplicativo = std::env::var("APLICATIVO").expect("APLICATIVO must be set");
     println!("Backend web: Nombre del aplicativo obtenido.");
@@ -63,7 +64,7 @@ async fn main() -> std::io::Result<()> {
     //db_pool: Arc::new(Mutex::new(Some(pool))),
     let initial_state = AppState { 
         db_pool: pool, // Esto es correcto
-        //palabra_clave1,
+        palabra_clave1,
         palabra_clave2,
         db_connection_url: db_url.to_string(),
         aplicativo_id: Arc::new(Mutex::new(app_id_value)),

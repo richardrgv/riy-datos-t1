@@ -17,32 +17,31 @@
 }
 
 .menu-item {
-    position: relative;
+    position: relative; 
     margin-bottom: 5px;
 }
 
-/* ⭐ SOLUCIÓN DEFINITIVA DEL TOOLTIP ⭐ */
-.menu-tooltip {
-    /* Las propiedades display: none; y overflow: hidden; han sido eliminadas */
-    position: absolute;
-    left: calc(100% + 10px);
-    top: 50%;
-    transform: translateY(-50%);
+/* ⭐ Reglas del tooltip: 'top' lo controla React ⭐ */
+.menu-tooltip { 
+    position: fixed; 
+    left:80px; /* Ancho del menú cerrado (80px) + un poco de espacio */
+    /* top: se establecerá dinámicamente por React */
+    /* transform: translateY(-50%) ya no es necesario aquí */
     background-color: #333;
     color: #fff;
     padding: 5px 10px;
     border-radius: 4px;
     white-space: nowrap;
-    z-index: 1000;
-    pointer-events: none;
+    z-index: 10000; 
+    pointer-events: none; 
 }
-/* ⭐ EL TOOLTIP SE MUESTRA CON LA LÓGICA DE REACT ⭐ */
+
 
 /* ⭐ Reglas base para todos los enlaces del menú ⭐ */
 .menu-link {
-    display: flex;
-    align-items: center; 
-    gap: 12px;
+    display: flex !important; 
+    align-items: center !important; 
+    gap: 12px; 
     box-sizing: border-box;
     text-decoration: none;
     color: #495057;
@@ -51,13 +50,15 @@
     transition: background-color 0.2s, color 0.2s;
     font-size: 1rem;
     cursor: pointer;
+    width: 100%; 
+    padding: 10px 15px;
 }
 
-/* ⭐ Reiniciar estilos por defecto del botón para que se comporte como un enlace ⭐ */
+/* ⭐ Reiniciar estilos por defecto del botón ⭐ */
 .menu-item button.menu-link {
     background: none;
     border: 1px solid #dee2e6;
-    padding: 0;
+    padding: 0; 
     font: inherit;
     color: inherit;
     width: 100%;
@@ -67,57 +68,49 @@
     gap: 12px;
 }
 
-/* Estilos de ícono y texto compartidos */
+/* ⭐ Estilos de ícono y texto compartidos (Alineación) ⭐ */
 .menu-icon {
-    min-width: 24px;
-    flex-basis: 24px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    min-width: 24px !important; 
+    width: 24px !important;
+    height: 24px !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important; 
     font-size: 1.3em;
-    flex-shrink: 0;
+    flex-shrink: 0; 
 }
 
 .menu-text {
     flex-grow: 1;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
+    overflow: hidden; 
+    white-space: nowrap; 
+    text-overflow: ellipsis; 
+    line-height: 1.5; 
 }
 
-/* ⭐ ESTILOS PARA MENÚ ABIERTO (.open) ⭐ */
-.menu-container.open {
-    width: 280px;
-}
 
-.menu-container.open .menu-link {
-    width: calc(100% - 30px);
+/* ⭐ ESTILOS PARA MENÚ ABIERTO (SIN .compact) ⭐ */
+.menu-item:not(.compact) .menu-link {
+    width: calc(100% - 30px); 
     margin: 0 15px;
     padding: 10px 15px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
+}
+.menu-item:not(.compact) .menu-text {
+    display: block; 
 }
 
-/* ⭐ ESTILOS PARA MENÚ CERRADO (.closed) ⭐ */
-.menu-container.closed {
-    width: 80px;
-}
-.menu-container.closed .menu-link {
+
+/* ⭐ ESTILOS PARA MENÚ CERRADO (.compact) ⭐ */
+.menu-item.compact .menu-link {
     width: 50px;
     height: 50px;
-    margin: 0 auto;
-    justify-content: center;
-    padding: 10px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
+    margin: 0 auto; 
+    justify-content: center; 
+    padding: 0; 
+    gap: 0; 
 }
-.menu-container.closed .menu-icon {
-    margin-right: 0;
-}
-.menu-container.closed .menu-text {
-    display: none;
+.menu-item.compact .menu-text {
+    display: none !important; 
 }
 
 /* Estilos de hover y activo */
@@ -130,15 +123,14 @@
     border-color: #007bff;
 }
 
-/* --- Estilos del Submenú Pop-up --- */
+/* --- Estilos del Submenú Pop-up (Vista Móvil) --- */
 .submenu-popup-container {
-    position: absolute;
+    position: fixed; 
     top: 0;
-    left: calc(var(--sidebar-width, 60px) + 10px);
-    width: 280px;
-    min-height: 100vh;
-    background-color: #fff;
-    border-left: 1px solid #dee2e6;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(255, 255, 255, 0.95); 
     box-shadow: 2px 0 10px rgba(0,0,0,0.1);
     z-index: 1000;
     padding: 20px;
@@ -181,18 +173,3 @@
 .submenu-popup-container .submenu-list .menu-link:hover {
     background-color: #f1f3f5;
 }
-
-/* ⭐⭐ CORRECCIÓN FINAL PARA MÓVILES ⭐⭐ */
-@media (max-width: 768px) {
-    /* ⭐⭐ CAMBIO CLAVE: FUERZA LA ANCHURA DEL MENÚ PRINCIPAL AL 100% ⭐⭐ */
-    .menu-container.open {
-        width: 100% !important;
-        min-width: 0 !important;
-    }
-    
-    .submenu-popup-container {
-        /* ⭐⭐ CAMBIO CLAVE: FUERZA LA ANCHURA DEL SUBMENÚ AL 100% Y REUBICA ⭐⭐ */
-        width: 100% !important; 
-        left: 0 !important;
-        box-sizing: border-box;
-        min-

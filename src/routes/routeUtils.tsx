@@ -8,33 +8,35 @@ Es una utilidad exclusiva del frontend.
 =================
 
 
-
 */
+// src/routes/routeUtils.tsx
 
-import { permissionsMap, PermissionItem, ActionType } from '../../shared/config/permissions';
-import { Fragment } from 'react'; // Necesario para envolver rutas anidadas
+import React from 'react';
 import { Route } from 'react-router-dom';
+import { PermissionItem, ActionType } from '../../src-tauri/src/shared/config/permissions';
 
-//import AdministracionUsuariosLayout from '../layouts/AdministracionUsuariosLayout';
+// Importa todos los componentes que usarás en tus rutas
 import Home from '../pages/Home';
 import ListaDeUsuarios from '../pages/Usuarios/ListaDeUsuarios';
 import RolesYPermisos from '../pages/Usuarios/RoleList';
+import GenericPage from '../pages/GenericPage';
 
 /**
  * Mapea los IDs de rutas a sus componentes correspondientes.
- * Esto evita importar componentes en el archivo de permisos.
  */
-const routeComponentMap: { [key: string]: React.FC } = {
+const routeComponentMap: { [key: string]: React.ComponentType<any> } = {
     'dashboard': Home,
     'users_module': ListaDeUsuarios,
     'roles_module': RolesYPermisos,
-    // ... Agregar aquí todos los IDs de rutas del permissionsMap
-    // y sus respectivos componentes.
+    'views_menu': GenericPage,
+    'views_management': GenericPage,
+    'view_assignment': GenericPage,
+    'row_security': GenericPage,
+    'ad_hoc_queries': GenericPage,
 };
 
 /**
  * Genera recursivamente un árbol de rutas a partir del mapa de permisos.
- * Las rutas anidadas se renderizarán dentro de sus padres.
  * @param map El mapa de permisos, puede ser el principal o un sub-mapa.
  * @param userPermissions El array de permisos del usuario.
  */
@@ -43,21 +45,32 @@ export const generateRoutesFromMap = (map: { [key: string]: PermissionItem }, us
         const item = map[key];
         const Component = routeComponentMap[item.id];
         
-        // 1. Verificar si el usuario tiene permiso para ver el ítem
-        const hasPermission = item.permissions.some(perm => userPermissions.includes(perm));
-        if (!hasPermission || !item.path) {
-            return []; // No tiene permiso o no es una ruta renderizable
+        // La condición de permiso debe ser flexible para padres sin path
+        const hasPermission = item.permissions.some(perm => userPermissions.includes(perm)) || (item.children && Object.values(item.children).some(child => child.permissions.some(perm => userPermissions.includes(perm))));
+        
+        if (!hasPermission) {
+            return []; // No tiene permiso para este ítem ni para sus hijos
         }
 
-        // 2. Si tiene hijos, generar las rutas anidadas
         const nestedRoutes = item.children 
             ? generateRoutesFromMap(item.children, userPermissions) 
             : [];
         
-        // 3. Devolver el componente <Route> correspondiente
-        // Nota: se usa Fragment para devolver múltiples rutas en un array
+        // Si el ítem no tiene un path, solo devolvemos las rutas anidadas.
+        if (!item.path || !Component) {
+            return nestedRoutes;
+        }
+
+        let element;
+        if (item.id === 'views_menu' || item.id === 'views_management' || item.id === 'view_assignment' || item.id === 'row_security' || item.id === 'ad_hoc_queries') {
+            element = <Component title={item.name} />;
+        } else {
+            element = <Component />;
+        }
+        
+        // El path es absoluto, ya que la ruta padre en AppRouter es /*
         return (
-            <Route key={item.id} path={item.path} element={<Component />}>
+            <Route key={item.id} path={item.path} element={element}>
                 {nestedRoutes}
             </Route>
         );

@@ -63,7 +63,7 @@ export const permissionsMap = {
                 name: 'Roles',
                 path: '/administracion/roles',
                 //icon: 'FaUserTie',
-                permissions: ['read', 'create', 'update', 'delete'],
+                permissions: ['lista_roles', 'read', 'create', 'update', 'delete'],
             },
             'permissions_module': {
                 id: 'permissions_module',

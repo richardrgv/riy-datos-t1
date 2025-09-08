@@ -1,13 +1,13 @@
 // src/layouts/MainLayout.tsx
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useLocation, Outlet, useNavigate, Routes, Route } from 'react-router-dom';
+import { useLocation, Outlet, useNavigate } from 'react-router-dom';
 import Menu from '../components/Menu';
 import { findTitleByPath } from '../utils/titleUtils';
 import { usePermissions } from '../contexts/PermissionContext';
-import { permissionsMap } from '../../src-tauri/src/shared/config/permissions';
-import { generateRoutesFromMap } from '../routes/routeUtils';
 import './MainLayout.css';
+import { FaBars } from 'react-icons/fa';
+import ReactDOM from 'react-dom'; // ⭐ Importamos ReactDOM ⭐
 
 const MainLayout: React.FC = () => {
     const [childTabs, setChildTabs] = useState(null);
@@ -17,6 +17,12 @@ const MainLayout: React.FC = () => {
     const navigate = useNavigate();
     const { permissions } = usePermissions();
     const [selectedValue, setSelectedValue] = useState('');
+    // ⭐ Nuevo estado para el tooltip del botón ⭐
+    const [isButtonHovered, setIsButtonHovered] = useState(false);
+    // ⭐ Referencia para el botón del menú ⭐
+    const buttonRef = useRef<HTMLButtonElement>(null);
+    const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
+
 
     useEffect(() => {
         const newTitle = findTitleByPath(location.pathname);
@@ -35,6 +41,24 @@ const MainLayout: React.FC = () => {
         setIsMenuOpen(!isMenuOpen);
     };
 
+    // ⭐ Manejadores del mouse para el botón del menú ⭐
+    const handleMouseEnter = () => {
+        setIsButtonHovered(true);
+        if (buttonRef.current) {
+            const rect = buttonRef.current.getBoundingClientRect();
+            // Posicionamos el tooltip a la derecha del botón
+            setTooltipPosition({
+                top: rect.top + rect.height / 2,
+                left: rect.left + rect.width + 10 // 10px de separación
+            });
+        }
+    };
+
+    const handleMouseLeave = () => {
+        setIsButtonHovered(false);
+    };
+
+
     const showDropdown = childTabs && childTabs.length > 0;
     
     const handleSelectChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
@@ -51,11 +75,8 @@ const MainLayout: React.FC = () => {
         </select>
     );
 
-    const protectedRoutes = generateRoutesFromMap(permissionsMap, permissions);
-
     return (
         <div className="main-layout-container">
-            {/* ⭐ Pasamos la función 'toggleMenu' al componente 'Menu' */}
             <aside className={`sidebar ${isMenuOpen ? 'open' : 'closed'}`}>
                 <div className="menu-header">
                     {isMenuOpen ? 'Menú Principal' : 'Menú'}
@@ -64,9 +85,26 @@ const MainLayout: React.FC = () => {
             </aside>
             <main className="content-area">
                 <header className="content-header">
-                    <button onClick={toggleMenu} className="menu-toggle-button">
-                        {isMenuOpen ? 'Cerrar Menú' : 'Abrir Menú'}
+                    {/* ⭐ Añadimos ref y manejadores de eventos al botón ⭐ */}
+                    <button
+                        ref={buttonRef}
+                        onClick={toggleMenu}
+                        className="menu-toggle-button"
+                        onMouseEnter={handleMouseEnter}
+                        onMouseLeave={handleMouseLeave}
+                    >
+                        <FaBars />
                     </button>
+                    {/* ⭐ Condición para mostrar el tooltip con Portal ⭐ */}
+                    {isButtonHovered && ReactDOM.createPortal(
+                        <span 
+                            className="toggle-button-tooltip" 
+                            style={{ top: tooltipPosition.top, left: tooltipPosition.left }}
+                        >
+                            {isMenuOpen ? 'Cerrar menú' : 'Abrir menú'}
+                        </span>,
+                        document.body
+                    )}
                     <h1>{windowTitle}</h1>
                     {showDropdown && (
                         <div className="header-right-content-wrapper">
@@ -75,11 +113,9 @@ const MainLayout: React.FC = () => {
                     )}
                 </header>
                 <div className="content-body">
-                    <Routes>
-                        {protectedRoutes}
-                    </Routes>
+                    <Outlet />
                 </div>
-                <footer>
+                <footer className="app-footer">
                     © 2025 RIY Datos | Todos los derechos reservados.
                     <span className="footer-separator">|</span>
                     <a href="#" className="footer-link">Acerca del aplicativo</a>

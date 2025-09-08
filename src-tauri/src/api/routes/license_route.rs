@@ -1,45 +1,19 @@
 // src/api/routes/license.rs
-use actix_web::{get, HttpResponse, 
-    Responder, web};
-    // Import AppState from the shared_lib crate
+use actix_web::{
+    get, 
+    post, 
+    HttpResponse, 
+    Responder, 
+    web};
 use shared_lib::state::AppState;
-/* 
-use actix_cors::Cors; // <-- Importar Cors
-use serde::{Deserialize, Serialize};
-//use sqlx::{Pool, Mssql};
-use std::sync::Arc;
-use tokio::sync::Mutex;
-use dotenv::dotenv;
+use shared_lib::license_logic::LicenseCheckResult;
 
-// Usa el crate actual para encontrar la librería compartida
-use shared_lib::{db, models, user_logic, app_errors, middleware};
-*/
-
-//use shared_lib::models::LoggedInUser;
-
-// Agrega estas líneas al inicio de tu archivo para importar los nuevos tipos
-/*use shared_lib::models::{LoginData};
-use shared_lib::user_logic::UserError;
-use shared_lib::app_errors::{ApiError, AppErrorCode};
-
-use actix_web::{middleware::Logger};
-use crate::middleware::auth_middleware::Authenticated;
-
-use crate::models::{LoginResponse}; //, Claims}; // , User
-use chrono::Utc;
-use chrono::Duration;
-use jsonwebtoken::{encode, EncodingKey, Header}; // DecodingKey, Validation}; // <-- Add Header here
-use actix_web::HttpRequest; */
-// Import the Service trait
-//use actix_web::dev::Service; 
-
-//use actix_web::middleware::Logger;
-//use futures::future::FutureExt;
-
-
-
-
-
+// ⭐ Agregamos la ruta para obtener info de la DB ⭐
+use serde::{Deserialize};
+#[derive(Deserialize)]
+struct SaveCredentialsPayload {
+    credentials: String,
+}
 
 
 #[get("/license/status")]
@@ -48,12 +22,6 @@ pub async fn get_license_status(
 ) -> impl Responder {
     println!("get_license_status: Handler llamado.");
 
-    //let pool_guard = state.db_pool.lock().await;
-    //println!("get_license_status: Pool guard obtenido.");
-    
-    //let pool_ref = pool_guard.as_ref().expect("DB pool not available");
-    //println!("get_license_status: Pool de DB obtenido.");
-    
     let app_id_guard = state.aplicativo_id.lock().await;
     println!("get_license_status: app_id guard obtenido.");
     
@@ -82,7 +50,73 @@ pub async fn get_license_status(
     }
 }
 
+
+
+
+
+#[get("/license/db-info")]
+pub async fn get_db_connection_info_route(
+    state: web::Data<AppState>
+) -> impl Responder {
+    println!("get_db_connection_info_route: Handler llamado.");
+    let db_connection_url = 
+        &state.db_connection_url;
+    match shared_lib::db::parse_mssql_connection_url(
+        db_connection_url) {
+        Ok((server_name, db_name)) => {
+            HttpResponse::Ok().json((server_name, db_name))
+        },
+        Err(e) => {
+            eprintln!("get_db_connection_info_route: Error al parsear URL: {}", e);
+            HttpResponse::InternalServerError().body(e)
+        }
+    }
+}
+
+
+
+// ⭐ Nuevo endpoint para guardar credenciales desde la web ⭐
+#[post("/license/save-credentials")]
+
+pub async fn save_license_credentials_route(
+    state: web::Data<AppState>,
+    body: web::Json<SaveCredentialsPayload> // Recibe el JSON del frontend
+) -> impl Responder {
+    println!("save_license_credentials_route: Handler llamado.");
+
+    let app_id_guard = state.aplicativo_id.lock().await;
+    println!("save_license_credentials_route: app_id guard obtenido.");
+    
+    let app_id = *app_id_guard;
+    println!("save_license_credentials_route: app_id obtenido: {}", app_id);
+
+    // Llama a la función principal
+     match shared_lib::license_logic::save_license_credentials(
+        &state.db_pool, // <--- Accede al pool directamente
+        &state.sql_collate_clause,
+        app_id,
+        &state.palabra_clave1,
+        &state.palabra_clave2,
+        &state.db_connection_url,
+        &state.aplicativo,
+        // ⭐⭐ CAMBIO CLAVE: Usamos 'body.credentials' para acceder al valor ⭐⭐
+        &body.credentials, 
+    ).await {
+        Ok(license_valid) => {
+            println!("save_license_credentials_route: La lógica de guardado fue exitosa. Validez: {}", license_valid);
+            HttpResponse::Ok().json(license_valid)
+        },
+        Err(e) => {
+            eprintln!("save_license_credentials_route: Error en la lógica de guardado de credenciales: {}", e);
+            HttpResponse::InternalServerError().body(format!("Error: {}", e))
+        },
+    }
+}
+
+
 // Función de configuración para Actix-Web
 pub fn license_config_pub(cfg: &mut web::ServiceConfig) {
-    cfg.service(get_license_status);
+    cfg.service(get_license_status)
+       .service(get_db_connection_info_route)
+       .service(save_license_credentials_route);
 }
