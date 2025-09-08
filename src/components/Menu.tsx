@@ -17,67 +17,21 @@ Este hook compara tu llave (los permisos del UserContext)
 con la cerradura de la página (el permiso definido en routeUtils).
 */
 
-// src/components/Menu.tsx 
-
-import React, { useState, useRef } from 'react'; // ⭐ Importamos useRef ⭐
-import { NavLink } from 'react-router-dom';
+// src/components/Menu.tsx
+import React, { useState, useRef } from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { permissionsMap, PermissionItem } from '../../src-tauri/src/shared/config/permissions';
 import { usePermissions } from '../contexts/PermissionContext';
 import './Menu.css';
 import { IconType } from 'react-icons';
-import { FaHome, FaCog, FaDatabase, FaQuestionCircle } from 'react-icons/fa'; 
+import { FaAngleLeft, FaHome, FaCog, FaDatabase, FaQuestionCircle } from 'react-icons/fa'; 
 import ReactDOM from 'react-dom';
 
-// Mapeo de IDs a componentes de iconos
 const iconComponentMap: { [key: string]: IconType } = {
     'dashboard': FaHome,
     'administration_module': FaCog, 
     'views_module': FaDatabase,     
     'help_module': FaQuestionCircle
-};
-
-interface SubMenuPopupProps {
-    parentItem: PermissionItem;
-    userPermissions: string[];
-    onClose: () => void;
-    toggleMenu: () => void;
-}
-
-const SubMenuPopup: React.FC<SubMenuPopupProps> = ({ parentItem, userPermissions, onClose, toggleMenu }) => {
-    const accessibleChildren = Object.values(parentItem.children || {}).filter(
-        child => child.permissions.some(perm => userPermissions.includes(perm))
-    );
-
-    if (accessibleChildren.length === 0) {
-        return null;
-    }
-
-    return (
-        <div className="submenu-popup-container">
-            <div className="submenu-popup-header">
-                <h3>{parentItem.name}</h3>
-                <button onClick={onClose}>&times;</button>
-            </div>
-            <ul className="submenu-list">
-                {accessibleChildren.map(child => (
-                    <li key={child.id}>
-                        <NavLink
-                            to={child.path || '#'}
-                            className={({ isActive }) => `menu-link ${isActive ? 'active' : ''}`}
-                            onClick={() => {
-                                onClose();
-                                if (window.innerWidth <= 768) {
-                                    toggleMenu();
-                                }
-                            }}
-                        >
-                            <span className="submenu-text">{child.name}</span>
-                        </NavLink>
-                    </li>
-                ))}
-            </ul>
-        </div>
-    );
 };
 
 interface MenuProps {
@@ -87,110 +41,129 @@ interface MenuProps {
 
 const Menu: React.FC<MenuProps> = ({ isMenuOpen, toggleMenu }) => {
     const { permissions } = usePermissions();
-    const [openPopup, setOpenPopup] = useState<PermissionItem | null>(null);
-    const [hoveredItemId, setHoveredItemId] = useState<string | null>(null);
-    // ⭐ Nuevo estado para la posición del tooltip ⭐
-    const [tooltipTop, setTooltipTop] = useState<number>(0);
+    const navigate = useNavigate();
 
-    // ⭐ Referencia para obtener la posición de cada ítem del menú ⭐
-    const menuItemRefs = useRef<{ [key: string]: HTMLLIElement | null }>({});
-
-
-    let menuItems = Object.values(permissionsMap).filter(
+    const initialMenuItems: PermissionItem[] = Object.values(permissionsMap).filter(
         item => item.permissions.some(perm => permissions.includes(perm))
     );
     
-    const dashboardItemIndex = menuItems.findIndex(item => item.id === 'dashboard');
-    if (dashboardItemIndex === -1) {
-        const homeItem: PermissionItem = {
-            id: 'dashboard',
-            name: 'Inicio',
-            path: '/dashboard',
-            permissions: [],
-            icon: iconComponentMap['dashboard'],
-        };
-        menuItems = [homeItem, ...menuItems];
-    } else {
-        const existingDashboardItem = menuItems[dashboardItemIndex];
-        existingDashboardItem.icon = iconComponentMap['dashboard'];
-        if (dashboardItemIndex !== 0 && existingDashboardItem.path === '/dashboard') {
-            menuItems.splice(dashboardItemIndex, 1);
-            menuItems.unshift(existingDashboardItem);
-        }
-    }
+    const [menuHistory, setMenuHistory] = useState<PermissionItem[][]>([initialMenuItems]);
+    const currentMenu = menuHistory[menuHistory.length - 1];
+    const isSubMenu = menuHistory.length > 1;
 
-    menuItems = menuItems.map(item => ({
+    const [showTooltip, setShowTooltip] = useState<boolean>(false);
+    const [tooltipContent, setTooltipContent] = useState<string | null>(null);
+    const [tooltipPosition, setTooltipPosition] = useState<{ top: number, left: number } | null>(null);
+
+    const accessibleCurrentMenu = currentMenu.filter(
+        item => item.permissions.some(perm => permissions.includes(perm))
+    );
+
+    const menuItemsWithIcons = accessibleCurrentMenu.map(item => ({
         ...item,
         icon: item.icon || iconComponentMap[item.id] || undefined,
     }));
 
-    // ⭐ Función para manejar el hover y calcular la posición ⭐
-    const handleMouseEnter = (item: PermissionItem) => {
-        setHoveredItemId(item.id);
-        if (menuItemRefs.current[item.id]) {
-            const rect = menuItemRefs.current[item.id]!.getBoundingClientRect();
-            // Calcula la mitad de la altura del ítem para centrar el tooltip
-            setTooltipTop(rect.top + rect.height / 2);
+    const handleItemClick = (item: PermissionItem) => {
+        if (item.children && Object.keys(item.children).length > 0) {
+            const accessibleChildren = Object.values(item.children).filter(
+                child => child.permissions.some(perm => permissions.includes(perm))
+            );
+            if (accessibleChildren.length > 0) {
+                setMenuHistory([...menuHistory, accessibleChildren]);
+            }
+        } else if (item.path) {
+            navigate(item.path);
+            if (window.innerWidth <= 768) {
+                toggleMenu();
+            }
+        }
+    };
+    
+    const handleBackClick = () => {
+        setMenuHistory(menuHistory.slice(0, -1));
+    };
+
+    const handleMouseEnter = (item: PermissionItem, targetElement: HTMLElement) => {
+        if (!isMenuOpen) {
+            setTooltipContent(item.name);
+            const rect = targetElement.getBoundingClientRect();
+            setTooltipPosition({
+                top: rect.top + rect.height / 2,
+                left: rect.right + 10 
+            });
+            setShowTooltip(true);
         }
     };
 
     const handleMouseLeave = () => {
-        setHoveredItemId(null);
-        setTooltipTop(0); // Resetea la posición
+        setShowTooltip(false);
+        setTooltipContent(null);
+        setTooltipPosition(null);
     };
 
+    const parentItemOfSubMenu = menuHistory.length > 1 ? Object.values(permissionsMap).find(
+        (permItem) => permItem.children && Object.values(permItem.children).some(
+            (child) => child.id === accessibleCurrentMenu[0]?.id
+        )
+    ) : undefined;
+    const parentName = parentItemOfSubMenu ? parentItemOfSubMenu.name : 'Volver';
 
     return (
         <nav className="menu-container">
             <ul className="menu-list">
-                {menuItems.map(item => (
+                {isSubMenu && (
+                    <li
+                        onClick={handleBackClick}
+                        className="menu-back-header"
+                    >
+                        <FaAngleLeft />
+                        <span>{parentName}</span>
+                    </li>
+                )}
+                {menuItemsWithIcons.map(item => (
                     <li
                         key={item.id}
                         className={`menu-item ${!isMenuOpen ? 'compact' : ''}`}
-                        ref={el => menuItemRefs.current[item.id] = el} // ⭐ Asigna la referencia ⭐
-                        onMouseEnter={() => handleMouseEnter(item)} // ⭐ Usa el nuevo manejador ⭐
-                        onMouseLeave={handleMouseLeave} // ⭐ Usa el nuevo manejador ⭐
                     >
                         {item.children ? (
                             <button
-                                onClick={() => setOpenPopup(item)}
+                                onClick={() => handleItemClick(item)}
                                 className="menu-link"
+                                onMouseEnter={(e) => handleMouseEnter(item, e.currentTarget)}
+                                onMouseLeave={handleMouseLeave}
                             >
                                 {item.icon && <span className="menu-icon"><item.icon /></span>}
                                 <span className="menu-text">{item.name}</span>
-                                {hoveredItemId === item.id && !isMenuOpen && ReactDOM.createPortal(
-                                    <span className="menu-tooltip" style={{ top: tooltipTop + 'px' }}>{item.name}</span>, // ⭐ Pasa la posición 'top' ⭐
-                                    document.body
-                                )}
                             </button>
                         ) : (
                             <NavLink
                                 to={item.path || '#'}
                                 className={({ isActive }) => `menu-link ${isActive ? 'active' : ''}`}
                                 onClick={() => {
-                                    if (isMenuOpen && window.innerWidth <= 768) {
+                                    if (window.innerWidth <= 768 && isMenuOpen) {
                                         toggleMenu();
                                     }
                                 }}
+                                onMouseEnter={(e) => handleMouseEnter(item, e.currentTarget)}
+                                onMouseLeave={handleMouseLeave}
                             >
                                 {item.icon && <span className="menu-icon"><item.icon /></span>}
                                 <span className="menu-text">{item.name}</span>
-                                {hoveredItemId === item.id && !isMenuOpen && ReactDOM.createPortal(
-                                    <span className="menu-tooltip" style={{ top: tooltipTop + 'px' }}>{item.name}</span>, // ⭐ Pasa la posición 'top' ⭐
-                                    document.body
-                                )}
                             </NavLink>
                         )}
                     </li>
                 ))}
             </ul>
-            {openPopup && (
-                <SubMenuPopup
-                    parentItem={openPopup}
-                    userPermissions={permissions}
-                    onClose={() => setOpenPopup(null)}
-                    toggleMenu={toggleMenu} 
-                />
+            {/* ⭐ CORRECCIÓN: El tooltip se renderiza una sola vez, fuera del map, con un Portal ⭐ */}
+            {showTooltip && tooltipContent && tooltipPosition && ReactDOM.createPortal(
+                <span 
+                    className="menu-tooltip visible"
+                    style={{ top: tooltipPosition.top + 'px', left: tooltipPosition.left + 'px' }}
+                >
+                    {tooltipContent}
+                </span>,
+                document.body
             )}
         </nav>
     );

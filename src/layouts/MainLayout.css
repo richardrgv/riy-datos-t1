@@ -2,14 +2,15 @@
 
 html,
 body {
-  height: 100%;
-  margin: 0;
-  /* Elimina la línea 'overflow: hidden;' */
+    height: 100%;
+    margin: 0;
+    /* Elimina la línea 'overflow: hidden;' */
 }
 
 .main-layout-container {
-  display: flex;
-  min-height: 100vh; /* Permite que el contenedor crezca si el contenido lo requiere. Dynamic Viewport Height*/
+    display: flex;
+    min-height: 100vh;
+    /* Permite que el contenedor crezca si el contenido lo requiere. Dynamic Viewport Height*/
 }
 
 
@@ -17,22 +18,26 @@ body {
     width: 250px;
     background-color: #f8f9fa;
     border-right: 1px solid #e9ecef;
-    padding: 20px;
+    /* ⭐ CORRECCIÓN CLAVE: ELIMINAMOS EL PADDING DE AQUÍ ⭐ */
+    /* padding: 20px; */
     transition: width 0.3s ease;
     flex-shrink: 0;
-    box-shadow: 2px 0 5px rgba(0,0,0,0.05);
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.05);
     display: flex;
     flex-direction: column;
-    overflow: visible; /* Permite que el contenido se muestre fuera del contenedor */
+    overflow: visible;
+    /* Permite que el contenido se muestre fuera del contenedor */
 }
 
 .sidebar.closed {
     width: 60px;
-    padding: 20px 0;
+    /* ⭐ CORRECCIÓN CLAVE: ELIMINAMOS EL PADDING DE AQUÍ ⭐ */
+    /* padding: 20px 0; */
 }
 
 .sidebar.closed .menu-header {
     text-align: center;
+    /* ⭐ CORRECCIÓN CLAVE: ESTA REGLA DEBE EXISTIR Y SER ESPECÍFICA ⭐ */
     padding: 0;
 }
 
@@ -41,20 +46,36 @@ body {
     font-weight: 700;
     color: #343a40;
     margin-bottom: 20px;
-    padding: 0 10px;
+    /* ⭐ REVERTIR CAMBIO: Este es el padding del menú ABIERTO ⭐ */
+    padding: 0 20px;
+    /* ⭐ CORRECCIÓN CLAVE: La alineación debe ser izquierda para el menú abierto ⭐ */
     text-align: left;
+    /* ⭐ CORRECCIÓN CLAVE: Agregamos esta línea para una alineación consistente ⭐ */
+    box-sizing: border-box;
+    /* ⭐ CORRECCIÓN CLAVE: Haz que la cabecera sea un flexbox para alinear el contenido como los enlaces ⭐ */
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    /* Mismo gap que .menu-link en Menu.css */
 }
+/* ELIMINA COMPLETAMENTE ESTE BLOQUE DE CÓDIGO 
+
+Para solucionar esto, debemos eliminar el conflicto de especificidad. 
+Dado que la clase .menu-link en Menu.css ya se encarga de darle estilo a los enlaces, 
+no necesitas la regla .menu-list a en tu MainLayout.css.
+
+¡esto solucionó desalineado de INIICO!
 
 .menu-list a {
     text-decoration: none;
     color: #495057;
     font-size: 1rem;
-    padding: 10px 15px;
+    padding: 10px 20px;
     margin-bottom: 5px;
     display: block;
     border-radius: 4px;
     transition: background-color 0.2s;
-}
+} */
 
 .menu-list a:hover {
     background-color: #e2e6ea;
@@ -66,13 +87,14 @@ body {
 }
 
 .content-area {
-  flex-grow: 1; /* Hace que el área de contenido ocupe todo el espacio disponible */
-  display: flex;
-  flex-direction: column;
-  overflow-x: hidden;
-  overflow-y: auto;
-  min-width: 0;
-  position: relative;
+    flex-grow: 1;
+    /* Hace que el área de contenido ocupe todo el espacio disponible */
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+    overflow-y: auto;
+    min-width: 0;
+    position: relative;
 }
 
 
@@ -82,7 +104,7 @@ body {
     padding: 15px 20px;
     background-color: #fff;
     border-bottom: 1px solid #ddd;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .content-header .menu-toggle-button {
@@ -122,37 +144,38 @@ body {
 }
 
 .content-body {
-  flex-grow: 1;
-  padding: 20px;
-  min-width: 0;
+    flex-grow: 1;
+    padding: 20px;
+    min-width: 0;
 }
 
 .app-footer {
-  flex-shrink: 0;
-  padding: 15px 20px;
-  background-color: #f4f4f4;
-  text-align: center;
-  font-size: 0.8rem;
-  color: #777;
+    flex-shrink: 0;
+    padding: 15px 20px;
+    background-color: #f4f4f4;
+    text-align: center;
+    font-size: 0.8rem;
+    color: #777;
 }
 
 .footer-separator {
-  margin: 0 10px;
+    margin: 0 10px;
 }
 
 /* ⭐⭐ ESTILOS DEL TOOLTIP DEL BOTÓN ⭐⭐ */
 .toggle-button-tooltip {
-  position: fixed;
-  /* top: lo controla React dinámicamente */
-  /* left: lo controla React dinámicamente */
-  transform: translateY(-50%); /* Centra verticalmente */
-  background-color: #333;
-  color: #fff;
-  padding: 5px 10px;
-  border-radius: 4px;
-  white-space: nowrap;
-  z-index: 10000;
-  pointer-events: none;
+    position: fixed;
+    /* top: lo controla React dinámicamente */
+    /* left: lo controla React dinámicamente */
+    transform: translateY(-50%);
+    /* Centra verticalmente */
+    background-color: #333;
+    color: #fff;
+    padding: 5px 10px;
+    border-radius: 4px;
+    white-space: nowrap;
+    z-index: 10000;
+    pointer-events: none;
 }
 
 /* ⭐⭐ CORRECCIÓN FINAL PARA MÓVILES ⭐⭐ */
@@ -160,12 +183,15 @@ body {
     .content-area {
         margin-left: 0;
         /* Aquí debes hacer que el área de contenido crezca para ocupar el espacio restante */
-        flex-grow: 1; 
+        flex-grow: 1;
     }
+
     .main-layout-container {
         display: flex;
-        flex-direction: column; /* Asegura que los hijos se apilen verticalmente */
-        min-height: 100dvh; /* Permite que el contenedor crezca si el contenido lo requiere. Dynamic Viewport Height*/
+        flex-direction: column;
+        /* Asegura que los hijos se apilen verticalmente */
+        min-height: 100dvh;
+        /* Permite que el contenedor crezca si el contenido lo requiere. Dynamic Viewport Height*/
     }
 
     .sidebar {
@@ -178,26 +204,26 @@ body {
         width: 100% !important;
         transform: translateX(-100%);
         transition: transform 0.3s ease-in-out;
-        border-right: none; 
+        border-right: none;
         box-shadow: none;
     }
 
     .sidebar.open {
         transform: translateX(0);
-        box-shadow: 2px 0 10px rgba(0,0,0,0.2);
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.2);
     }
-    
+
     .sidebar.closed {
         transform: translateX(-100%);
     }
 
-    
+
 
     /* ⭐⭐ CORRECCIÓN PARA EL FOOTER EN MÓVILES ⭐⭐ */
     .app-footer {
         flex-direction: column;
-        flex-shrink: 1; 
-        font-size: 0.7rem; 
+        flex-shrink: 1;
+        font-size: 0.7rem;
         padding: 10px;
         text-align: center;
         white-space: normal;
