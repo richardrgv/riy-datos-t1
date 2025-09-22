@@ -1,14 +1,14 @@
+// src/pages/GenericPage.tsx
+
 import React from 'react';
+import { Outlet } from 'react-router-dom';
 
-interface GenericPageProps {
-    title: string;
-}
-
-const GenericPage: React.FC<GenericPageProps> = ({ title }) => {
+const GenericPage = () => {
     return (
-        <div>
-            <h1>{title}</h1>
-            <p>Contenido en desarrollo...</p>
+        <div className="g-container">
+            <h1>En construcción.</h1>
+            <p>...</p>
+            <Outlet /> {/* Aquí se renderizarán los componentes hijos */}
         </div>
     );
 };

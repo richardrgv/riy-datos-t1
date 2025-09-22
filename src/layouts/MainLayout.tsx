@@ -5,6 +5,7 @@ import { useLocation, Outlet, useNavigate } from 'react-router-dom';
 import Menu from '../components/Menu';
 import { findTitleByPath } from '../utils/titleUtils';
 import { usePermissions } from '../contexts/PermissionContext';
+import { useTitle } from '../contexts/TitleContext'; // ⭐ Nuevo
 import './MainLayout.css';
 import { FaBars } from 'react-icons/fa';
 import ReactDOM from 'react-dom'; // ⭐ Importamos ReactDOM ⭐
@@ -12,10 +13,11 @@ import ReactDOM from 'react-dom'; // ⭐ Importamos ReactDOM ⭐
 const MainLayout: React.FC = () => {
     const [childTabs, setChildTabs] = useState(null);
     const [isMenuOpen, setIsMenuOpen] = useState(window.innerWidth > 768);
-    const [windowTitle, setWindowTitle] = useState('Mi Aplicación');
+    //const [windowTitle, setWindowTitle] = useState('Mi Aplicación');
     const location = useLocation();
     const navigate = useNavigate();
     const { permissions } = usePermissions();
+    const { title, setTitle } = useTitle(); // ⭐ Obtenemos el título y la función del contexto
     const [selectedValue, setSelectedValue] = useState('');
     // ⭐ Nuevo estado para el tooltip del botón ⭐
     const [isButtonHovered, setIsButtonHovered] = useState(false);
@@ -25,8 +27,9 @@ const MainLayout: React.FC = () => {
 
 
     useEffect(() => {
-        const newTitle = findTitleByPath(location.pathname);
-        setWindowTitle(newTitle);
+        const newDocTitle = findTitleByPath(location.pathname);
+        document.title = newDocTitle; // Puedes usarlo para el título de la pestaña del navegador
+        //setWindowTitle(newTitle);
     }, [location.pathname]);
 
     useEffect(() => {
@@ -105,7 +108,7 @@ const MainLayout: React.FC = () => {
                         </span>,
                         document.body
                     )}
-                    <h1>{windowTitle}</h1>
+                    <h1>{title}</h1>
                     {showDropdown && (
                         <div className="header-right-content-wrapper">
                             {selectDropdown}

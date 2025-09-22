@@ -33,21 +33,21 @@ export const permissionsMap = {
     'dashboard': {
         id: 'dashboard',
         name: 'Inicio',
-        path: '/dashboard',
+        path: 'dashboard',
         icon: FaHome, // ⭐ ¡Ahora es un componente!
         permissions: ['inicio', 'read'],
     },
     'system_administration_menu': {
         id: 'system_administration_menu',
         name: 'Administración del Sistema',
-        path: '/administracion',
+        path: 'administracion',
         icon: FaCogs, // ⭐ ¡Ahora es un componente!
         permissions: ['administracion'],
         children: {
             'users_module': {
                 id: 'users_module',
                 name: 'Usuarios',
-                path: '/administracion/usuarios',
+                path: 'usuarios',
                 //icon: 'FaUsers',
                 permissions: ['lista_usuarios', 'create', 'update', 'delete', 'export'],
                 actions: {
@@ -61,14 +61,14 @@ export const permissionsMap = {
             'roles_module': {
                 id: 'roles_module',
                 name: 'Roles',
-                path: '/administracion/roles',
+                path: 'roles',
                 //icon: 'FaUserTie',
                 permissions: ['lista_roles', 'read', 'create', 'update', 'delete'],
             },
             'permissions_module': {
                 id: 'permissions_module',
                 name: 'Permisos',
-                path: '/administracion/permisos',
+                path: 'permisos',
                 //icon: 'FaShieldAlt',
                 permissions: ['read', 'update'],
             }
@@ -77,32 +77,32 @@ export const permissionsMap = {
     'views_menu': {
         id: 'views_menu',
         name: 'Vistas de Datos',
-        path: '/vistas',
+        path: 'vistas',
         icon: FaDatabase, // ⭐ ¡Ahora es un componente!
         permissions: ['vistas'],
         children: {
             'views_management': {
                 id: 'views_management',
                 name: 'Gestión de Vistas',
-                path: '/vistas/gestion',
+                path: 'gestion',
                 permissions: ['read', 'create', 'update', 'delete'],
             },
             'view_assignment': {
                 id: 'view_assignment',
                 name: 'Asignación de Vistas',
-                path: '/vistas/asignacion',
+                path: 'asignacion',
                 permissions: ['read', 'update'],
             },
             'row_security': {
                 id: 'row_security',
                 name: 'Seguridad de Fila',
-                path: '/vistas/seguridad-fila',
+                path: 'seguridad-fila',
                 permissions: ['read', 'update'],
             },
             'ad_hoc_queries': {
                 id: 'ad_hoc_queries',
                 name: 'Consultas Ad-Hoc',
-                path: '/vistas/consultas-ad-hoc',
+                path: 'consultas-ad-hoc',
                 permissions: ['read', 'create'],
             },
         }
@@ -110,14 +110,14 @@ export const permissionsMap = {
     'help_menu': {
         id: 'help_menu',
         name: 'Ayuda y Soporte',
-        path: '/help',
+        path: 'help',
         icon: FaQuestionCircle, // ⭐ ¡Ahora es un componente!
         permissions: ['ayuda'],
         children: {
             'conceptual_help': {
                 id: 'conceptual_help',
                 name: 'Gestión de Ayudas',
-                path: '/help/gestion',
+                path: 'gestion',
                 permissions: ['read', 'create', 'update', 'delete'],
             }
         }

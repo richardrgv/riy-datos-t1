@@ -46,6 +46,19 @@
     box-sizing: border-box;
 }
 
+
+
+/* ⭐ CAMBIO CLAVE: Ajustamos los estilos para que el menú cerrado se centre perfectamente ⭐ */
+.sidebar.closed .menu-link,
+.sidebar.closed .menu-item button {
+    justify-content: center;
+    padding: 10px 0; /* Un padding más pequeño para que el ícono esté centrado */
+    gap: 0; 
+}
+
+
+
+
 .menu-link:hover,
 .menu-item button:hover {
     background-color: #e9ecef;

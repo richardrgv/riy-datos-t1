@@ -35,13 +35,16 @@ body {
     /* padding: 20px 0; */
 }
 
+/* ⭐⭐ CAMBIO CLAVE 1: Corregimos la alineación del menú cerrado ⭐⭐ */
 .sidebar.closed .menu-header {
-    text-align: center;
-    /* ⭐ CORRECCIÓN CLAVE: ESTA REGLA DEBE EXISTIR Y SER ESPECÍFICA ⭐ */
-    padding: 0;
+    justify-content: center;
+    padding: 10px 0; /* Un padding más pequeño para que el texto se centre */
+    gap: 0;
 }
 
 .menu-header {
+    height: 80px; /* ⭐ Asegura una altura consistente para la alineación vertical. ⭐ */
+    /* height: 60px;*/ /* ⭐⭐ Definir una altura consistente ⭐⭐ */
     font-size: 1.2rem;
     font-weight: 700;
     color: #343a40;
@@ -55,27 +58,18 @@ body {
     /* ⭐ CORRECCIÓN CLAVE: Haz que la cabecera sea un flexbox para alinear el contenido como los enlaces ⭐ */
     display: flex;
     align-items: center;
-    gap: 15px;
+    gap: 15px; 
     /* Mismo gap que .menu-link en Menu.css */
 }
-/* ELIMINA COMPLETAMENTE ESTE BLOQUE DE CÓDIGO 
 
-Para solucionar esto, debemos eliminar el conflicto de especificidad. 
-Dado que la clase .menu-link en Menu.css ya se encarga de darle estilo a los enlaces, 
-no necesitas la regla .menu-list a en tu MainLayout.css.
+/* ⭐⭐ SOLUCIÓN 1: Alineamos el texto del encabezado con los elementos del menú. ⭐⭐ */
+.menu-header h1 {
+    /* El ancho del ícono (24px) más el gap (15px) */
+    margin-left: 39px; 
+    margin-top: 0;
+    margin-bottom: 0;
+}
 
-¡esto solucionó desalineado de INIICO!
-
-.menu-list a {
-    text-decoration: none;
-    color: #495057;
-    font-size: 1rem;
-    padding: 10px 20px;
-    margin-bottom: 5px;
-    display: block;
-    border-radius: 4px;
-    transition: background-color 0.2s;
-} */
 
 .menu-list a:hover {
     background-color: #e2e6ea;
@@ -129,6 +123,8 @@ no necesitas la regla .menu-list a en tu MainLayout.css.
 }
 
 .content-header h1 {
+    /* ⭐⭐ CAMBIO CLAVE: Agregamos este margin para que el texto se alinee con el del menú. ⭐⭐ */
+    margin-left: 39px; 
     font-size: 1.8rem;
     font-weight: 700;
     color: #333;
@@ -177,6 +173,33 @@ no necesitas la regla .menu-list a en tu MainLayout.css.
     z-index: 10000;
     pointer-events: none;
 }
+
+
+/* ⭐⭐ SOLUCIÓN: Centra el texto del encabezado del menú cerrado. ⭐⭐ */
+.sidebar.closed .menu-header {
+    justify-content: center; /* Centra el contenido horizontalmente */
+    gap: 0; /* Elimina el espacio para centrar perfectamente */
+}
+
+.sidebar.closed .menu-header h1 {
+    display: none; /* Oculta el texto para evitar que se desborde */
+}
+
+.sidebar.closed .menu-header .menu-icon {
+    margin-right: 0; /* Asegura que el ícono esté centrado */
+}
+
+.sidebar.closed .menu-item button .menu-text {
+    display: none; /* Oculta el texto de los elementos del menú */
+}
+/* ⭐⭐ CAMBIO 2: Centra los íconos y elimina el texto en el menú cerrado. ⭐⭐ */
+.sidebar.closed .menu-link,
+.sidebar.closed .menu-item button {
+    justify-content: center;
+    padding: 10px 0; /* Un padding más pequeño para que el ícono esté centrado */
+    gap: 0; 
+}
+
 
 /* ⭐⭐ CORRECCIÓN FINAL PARA MÓVILES ⭐⭐ */
 @media (max-width: 768px) {
