@@ -1,7 +1,47 @@
-// src-tauri/src/auth.rs
+// src-tauri/src/shared/auth.rs
 
 use sqlx::{Pool, Mssql};
 use crate::models::{User};
+
+
+// --- NUEVA FUNCIÓN: Autenticación con UPN (Correo) de Microsoft ---
+/**
+ * Busca un usuario en riy.riy_usuario usando su UPN (User Principal Name / Correo).
+ * * @param pool El pool de conexión a la base de datos Mssql.
+ * @param user_upn El correo electrónico corporativo validado por Azure (UPN).
+ * @param sql_collate_clause La cláusula de intercalación para búsquedas sin distinción de mayúsculas/minúsculas.
+ * @returns Ok(Some(User)) si el usuario existe en la tabla, Ok(None) si no.
+ */
+pub async fn authenticate_msal_user(
+    pool: &Pool<Mssql>, 
+    user_upn: &str, 
+    sql_collate_clause: &str
+) -> Result<Option<User>, String> {
+    eprintln!("authenticate_msal_user: Iniciando la autenticación por UPN.");
+    println!("Intentando autenticar al usuario por UPN: {}", user_upn);
+
+    // ⚠️ Importante: Usamos el campo 'correo' para la búsqueda, ya que el UPN de Azure es el correo.
+    // Asumimos que el campo 'correo' en riy.riy_usuario es el UPN completo.
+    let user_exists_query = 
+        format!("SELECT usuario {0} as usuario, nombre {0} as nombre, correo {0} as correo
+                FROM riy.riy_usuario WITH(NOLOCK)
+                WHERE correo = @p1 {0}", sql_collate_clause);
+
+    let riy_user_result: Option<User> = sqlx::query_as(&user_exists_query)
+        .bind(user_upn)
+        .fetch_optional(pool)
+        .await
+        .map_err(|e| format!("Error al verificar usuario en riy.riy_usuario por UPN: {}", e))?;
+    
+    eprintln!("authenticate_msal_user: Resultado de la búsqueda de usuario: {}", riy_user_result.is_some());
+    
+    // Si se encuentra el usuario en la tabla corporativa, la autenticación es exitosa.
+    if riy_user_result.is_some() {
+        Ok(riy_user_result)
+    } else {
+        Ok(None)
+    }
+}
 
 // --- MODIFICADO: Ahora devuelve Option<LoggedInUser> en lugar de bool ---
 pub async fn authenticate_user(pool: &Pool<Mssql>, usuario: &str, password: &str) -> Result<Option<User>, String> {

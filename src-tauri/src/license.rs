@@ -204,7 +204,7 @@ pub async fn save_license_credentials_command(
         &state.palabra_clave2,
         &state.db_connection_url,
         &state.aplicativo,
-        encrypted_credentials_from_user
+        &encrypted_credentials_from_user
     ).await
 }
 
@@ -364,13 +364,15 @@ pub async fn save_license_credentials_command(
 /// COMANDO: get_db_connection_info_command
 /// Obtiene el nombre del servidor y la base de datos de la URL de conexión.
 /// ----------------------------------------------------------------------------------
+/// 
+/* 
 #[tauri::command]
 pub async fn get_db_connection_info_command(
     state: tauri::State<'_, AppState>
 ) -> Result<(String, String), String> {
     db::get_db_connection_info(&state.db_connection_url).await
 }
-
+*/
 
 
 

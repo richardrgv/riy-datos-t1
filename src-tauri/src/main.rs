@@ -1,5 +1,9 @@
 // src-tauri/src/main.rs
 
+/*
+Es el ejecutable principal de Tauri (el lanzador).
+*/
+
 use dotenv::dotenv;
 //use tauri::{Manager, State};
 use sqlx::{Pool, Mssql};
@@ -12,8 +16,7 @@ use tokio::sync::Mutex;
 // Importa el comando específico del módulo `user`
 // Declare the user module
 mod user; 
-
-
+mod menu; 
 mod license;
 use crate::license::{
     save_license_credentials_command, 
@@ -23,10 +26,13 @@ use crate::license::{
 
 // Usa el crate actual para encontrar la librería compartida
 use shared_lib::{db, models, user_logic, menu_logic};
-
 use crate::models::LoggedInUser; // Asegúrate de tener este import
 
-
+// MSAL
+use std::collections::HashSet; // 👈 Importa HashSet para la lista blanca
+use std::sync::Arc;
+// librería especializada que gestione el cliente JWKS de forma nativa.
+use reqwest::Client; 
 
 
 pub struct AppState {
@@ -40,6 +46,12 @@ pub struct AppState {
     pub auth_method: String, // <- Nuevo campo para el método de autenticación
     pub usuario_conectado: Mutex<Option<LoggedInUser>>, // <-- NUEVO: Para guardar el usuario logueado
     
+    // ⭐️ NUEVOS CAMPOS DE AUTENTICACIÓN MSAL ⭐️
+    pub msal_client_id: String,
+    pub whitelisted_domains: HashSet<String>, // Lista blanca de dominios
+    // ⭐️ DEBE LLAMARSE EXACTAMENTE ASÍ ⭐️
+    pub http_client: Arc<reqwest::Client>, // Cliente HTTP
+    pub msal_jwks_url: String,           // URL para descargar las claves
 }
 
 
@@ -58,6 +70,49 @@ async fn main() {
         _ => panic!("DB_TYPE no configurado o no soportado."),
     };
     let db_url = std::env::var(db_url_key).expect(&format!("{} debe estar configurado.", db_url_key));
+
+
+     // ⭐️ Carga de variables de entorno para MSAL ⭐️
+    let msal_client_id = std::env::var("MSAL_CLIENT_ID")
+        .expect("MSAL_CLIENT_ID debe estar configurado para la autenticación MSAL.");
+    // CLIENT_ID es un identificador único que Microsoft Azure le asigna a tu aplicación
+
+    // Cargar dominios de la lista blanca desde una variable de entorno
+    let domains_string = std::env::var("WHITELISTED_DOMAINS")
+        .expect("WHITELISTED_DOMAINS (separados por coma) deben estar configurados.");
+
+    // Convertir la cadena separada por comas en un HashSet para búsquedas rápidas
+    let whitelisted_domains: HashSet<String> = domains_string
+        .split(',')
+        .map(|s| s.trim().to_lowercase())
+        .filter(|s| !s.is_empty())
+        .collect();
+
+
+    // -------------------------------------------------------------------
+    // ✅ INICIALIZACIÓN DEL CLIENTE JWKS USANDO 'jwks-rs::JwksClient::new'
+    // -------------------------------------------------------------------
+    // -------------------------------------------------------------------
+    // ✅ INICIALIZACIÓN DE REQWEST
+    // -------------------------------------------------------------------
+    const JWKS_URL: &str = "https://login.microsoftonline.com/6e0ae27f-ee36-48dd-aa27-00166964baba/discovery/v2.0/keys";
+
+    let http_client_instance = Client::new(); // Constructor síncrono, no hay pánico de Tokio
+    let http_client = Arc::new(http_client_instance); 
+    // -------------------------------------------------------------------
+
+    
+    // 2. Crear el cliente Jwks
+    // El método 'new' es síncrono, evitando el pánico de runtime.
+    let jweks_client = JwksClient::new(JWKS_URL.to_string()) 
+        // Nota: JwksClient::new devuelve un Result<Self, Error>, por lo que necesitamos expect
+        .expect("Fallo crítico: No se pudo inicializar el cliente JwksClient.");
+
+    // 3. Envolver en Arc para compartirlo de forma segura en el estado
+    let jwt_auth_client = Arc::new(jweks_client); // Mantenemos el nombre de la variable 'jwt_auth_client'
+
+    // ------------------------------------------------------------------
+
 
     let auth_method = std::env::var("AUTH_METHOD").unwrap_or_else(|_| "DEFAULT".to_string());
     
@@ -86,6 +141,11 @@ async fn main() {
         aplicativo: app_code,
         auth_method, 
         usuario_conectado: Mutex::new(None), // <-- Se inicializa como None
+        // ⭐ Inicializar los nuevos campos ⭐
+        msal_client_id,
+        whitelisted_domains,
+        http_client,             // 👈 Cliente HTTP
+        msal_jwks_url: JWKS_URL.to_string(), // 👈 URL de JWKS
     };
 
     tauri::Builder::default()

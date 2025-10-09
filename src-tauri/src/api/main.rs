@@ -1,4 +1,10 @@
 // src/api/main.rs
+
+/*
+Es el servidor web de Rust (la API que usa Actix, etc.) que se enlaza a http://127.0.0.1:3000.
+      ====================
+*/
+
 use actix_cors::Cors;
 use actix_web::{
     web, App, HttpServer,
@@ -8,11 +14,32 @@ use dotenv::dotenv;
 // Importa los módulos de rutas
 mod routes;
 use routes::{auth_route, license_route, user_route, menu_route};
+// Add this import if you don't have it
+use tokio; 
 use tokio::sync::Mutex;
+
+
+// ⚠️ Asegúrate de importar los módulos necesarios
+// use crate::auth::{self, MsalConfig}; // Importa auth y MsalConfig
+
+
+mod msal_security_logic; // Declara el módulo de validación MSAL
+mod utils;             // Declara el módulo de utilidades compartidas
+use std::collections::HashSet;
+mod errors; // 👈 DECLARACIÓN DEL NUEVO MÓDULO DE ERRORES
+
+// 1. ✅ IMPORTAR 
+use reqwest::Client; // Cliente HTTP
 use std::sync::Arc;
 
+// URL DE MICROSOFT PARA OBTENER LAS CLAVES PÚBLICAS (JWKS)
+// Usamos el endpoint común de v2.0 para compatibilidad con Azure AD
+const JWKS_URL: &str = "https://login.microsoftonline.com/common/discovery/v2.0/keys"; 
+// ...
+// ... Continúa hasta la inicialización del estado...
 
-#[actix_web::main]
+//#[actix_web::main]
+#[tokio::main] // 👈 Usamos el macro de Tokio para asegurar la inicialización del runtime.
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
     
@@ -46,6 +73,32 @@ async fn main() -> std::io::Result<()> {
     let auth_method = std::env::var("AUTH_METHOD").expect("AUTH_METHOD must be set");
     println!("Backend web: Método de autenticación obtenido.");
 
+
+    // ⭐️ CARGA DE VARIABLES DE ENTORNO MSAL ⭐️
+    let msal_client_id = std::env::var("MSAL_CLIENT_ID").expect("MSAL_CLIENT_ID must be set");
+    println!("Backend web: MSAL Client ID obtenido.");
+
+    let domains_string = std::env::var("WHITELISTED_DOMAINS")
+        .expect("WHITELISTED_DOMAINS (separados por coma) must be set.");
+
+    let whitelisted_domains: HashSet<String> = domains_string
+        .split(',')
+        .map(|s| s.trim().to_lowercase())
+        .filter(|s| !s.is_empty())
+        .collect();
+    println!("Backend web: Lista blanca de dominios cargada.");
+
+   // -------------------------------------------------------------------
+    // ✅ NUEVA INICIALIZACIÓN DE REQWEST
+    // -------------------------------------------------------------------
+    const JWKS_URL: &str = "https://login.microsoftonline.com/6e0ae27f-ee36-48dd-aa27-00166964baba/discovery/v2.0/keys";
+
+    // 1. Crear el cliente Reqwest (síncrono)
+    let http_client_instance = Client::new(); 
+    let http_client = Arc::new(http_client_instance); 
+    // -------------------------------------------------------------------
+   
+   
     let pool = db::connect_db(&db_url).await
         .expect("Fallo al conectar a la base de datos en el servidor web.");
     println!("Backend web: Pool obtenido.");
@@ -73,6 +126,12 @@ async fn main() -> std::io::Result<()> {
         auth_method,
         usuario_conectado: Mutex::new(None).into(), // Initialize with None, as no user is logged in yet
         jwt_secret, // Add this line
+        // ⭐ INYECTAR CAMPOS MSAL ⭐
+        msal_client_id,
+        whitelisted_domains,
+        // ⭐️ AÑADIR EL CLIENTE JWKS AL ESTADO ⭐️
+        http_client,                          // 👈 Cliente HTTP
+        msal_jwks_url: JWKS_URL.to_string(), // 👈 URL de JWKS 
     };
 
    
@@ -97,6 +156,9 @@ async fn main() -> std::io::Result<()> {
                 web::scope("/api/public")
                     .configure(license_route::license_config_pub)
                     .configure(auth_route::auth_config_pub)
+                    // ⭐ AÑADIR LA RUTA MSAL DENTRO DE PUBLIC ⭐
+                    // Usaremos un handler que definiremos en auth_route
+                    .route("/auth/msal-login", web::post().to(auth_route::msal_login_handler))
             )
             // Separate scope for protected endpoints
             .service(

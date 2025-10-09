@@ -1,5 +1,7 @@
-// src/api/routes/auth.rs
+// src/api/routes/auth_routes.rs
 use actix_web::{post, web, HttpResponse, Responder};
+use actix_web::HttpRequest;
+use actix_web::error::ErrorUnauthorized; 
 use jsonwebtoken::{encode, EncodingKey, Header};
 use chrono::{Utc, Duration};
 use shared_lib::state::AppState;
@@ -8,8 +10,16 @@ use shared_lib::models::LoginData;
 use shared_lib::user_logic;
 use shared_lib::middleware::auth_claims::Claims;
 
-// no usa decorador (post login) pero lo pone abajo en main
-// aqui llega solo con App Web
+
+use crate::msal_security_logic; 
+use crate::utils::{self, create_session_response}; // <-- NUEVO IMPORT de utilidades
+use crate::errors::CustomError; // Asegúrate de tener tu tipo de error
+
+
+
+
+// --- 1. HANDLER DE LOGIN TRADICIONAL (Refactorizado) ---
+// (Usa create_session_response y obtiene permisos de utils)
 #[post("/login")]
 pub async fn login_user_handler(
     state: web::Data<AppState>,
@@ -29,48 +39,30 @@ pub async fn login_user_handler(
 
     match auth_result {
         Ok(Some(user)) => {
-            // Login exitoso.
-            // La lógica para `usuario_conectado` no es necesaria aquí.
-            // El frontend gestiona el estado con el token.
             
-            // 1. Obtiene los permisos del usuario (esto puede ser una función).
-            let permissions = vec![
-                "inicio".to_string(), // <-- Permiso para ver el menú principal
-                "administracion".to_string(), 
-                    "lista_usuarios".to_string(), 
-                        "agregar_usuario".to_string(), 
-                        "editar_usuario".to_string(), 
-                    "lista_roles".to_string(), 
-                "vistas".to_string(), 
-                "ayuda".to_string(), 
-                
-                // ... Agrega los demás permisos del usuario
-            ];
+            // 1. Obtiene los permisos del usuario (ESTO DEVUELVE UN RESULT)
+            let permissions_result = utils::get_user_permissions(&state.db_pool, &user.usuario).await;
 
-            // 2. Crea la carga útil (claims) del JWT.
-            let claims = Claims {
-                sub: user.usuario.clone(),
-                permissions: permissions.clone(),
-                exp: (Utc::now() + Duration::hours(24)).timestamp() as u64,
-            };
-            
-            // 3. Codifica el token con la clave secreta.
-            let jwt_secret = std::env::var("JWT_SECRET").expect("JWT_SECRET must be set");
-            let token = match encode(&Header::default(), &claims, &EncodingKey::from_secret(jwt_secret.as_bytes())) {
-                Ok(t) => t,
+            // ⚠️ AHORA MANEJAMOS EL RESULT DEL PERMISO
+            let permissions = match permissions_result {
+                Ok(p) => p, // Si es Ok, extraemos el vector de permisos (p)
                 Err(e) => {
-                    eprintln!("Error al crear el token: {}", e);
-                    return HttpResponse::InternalServerError().body("Failed to create token");
+                    // Si falla al obtener permisos, devolvemos un Error 500
+                    eprintln!("Error al obtener permisos: {}", e);
+                    return HttpResponse::InternalServerError().body(e.to_string());
                 }
             };
 
-            // 4. Devuelve la respuesta completa con token, usuario y permisos.
-            HttpResponse::Ok().json(LoginResponse {
-                token,
-                user,
-                permissions,
-            })
+            // 2. CREAR RESPUESTA UNIFICADA (Ahora 'permissions' es Vec<String>)
+            match create_session_response(user, permissions, &state.jwt_secret) { // 👈 FIX APLICADO
+                Ok(response) => HttpResponse::Ok().json(response),
+                Err(e) => {
+                    eprintln!("Error en creación de token de sesión: {}", e);
+                    HttpResponse::InternalServerError().body("Fallo al crear el token de sesión.")
+                }
+            }
         },
+
         Ok(None) => {
             // Login fallido.
             HttpResponse::Unauthorized().body("Usuario o contraseña incorrectos")
@@ -83,7 +75,59 @@ pub async fn login_user_handler(
     }
 }
 
-// Función de configuración para Actix-Web
-pub fn auth_config_pub(cfg: &mut web::ServiceConfig) {
-    cfg.service(login_user_handler);
+// --- 2. HANDLER DE LOGIN CON MICROSOFT MSAL (NUEVO) ---
+
+// JWEEKS CLIENT
+pub async fn msal_login_handler(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+) -> Result<HttpResponse, actix_web::Error> {
+
+    eprintln!("Paso por msal_login_handler");
+
+    // ✅ AHORA: Accedemos al nuevo cliente HTTP
+    let http_client = state.http_client.as_ref(); // Variable 'http_client' definida
+    
+    // 1. Obtener el token del encabezado Authorization
+    let auth_header = req.headers().get("Authorization")
+        .ok_or_else(|| CustomError::new(401, "Se requiere el encabezado Authorization"))?;
+
+    // 2. Convertir HeaderValue a &str y remover el prefijo "Bearer "
+    let token_str = auth_header.to_str()
+        .map_err(|_| CustomError::new(401, "El encabezado Authorization contiene caracteres no válidos"))?
+        .strip_prefix("Bearer ")
+        .ok_or_else(|| CustomError::new(401, "Formato de token no válido, se esperaba 'Bearer '"))?; 
+        
+    // Ahora, 'token_str' es de tipo &str.
+
+    // 3. Llamar a la función con el &str correcto
+    let user_data = msal_security_logic::validate_and_get_user(
+        token_str, // &str
+        state.get_ref(), // &AppState
+        http_client  // ⭐️ CAMBIO CRÍTICO: Usar 'http_client' ⭐️
+    ).await;
+
+    // ...
+  
+    // ... (Manejo de errores y respuesta HTTP) ...
+    let user = user_data.map_err(|e| {
+        eprintln!("Error de validación MSAL/DB: {}", e);
+        ErrorUnauthorized(format!("Acceso denegado: {}", e))
+    })?;
+    
+    Ok(HttpResponse::Ok().json(user))
 }
+
+
+
+
+// --- 3. FUNCIÓN DE CONFIGURACIÓN ---
+
+pub fn auth_config_pub(cfg: &mut web::ServiceConfig) {
+    cfg
+        .service(login_user_handler)
+        // ⭐️ AÑADIR NUEVA RUTA MSAL ⭐️
+        .route("/auth/msal-login", web::post().to(msal_login_handler)); 
+}
+
+

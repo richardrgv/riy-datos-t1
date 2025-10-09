@@ -87,7 +87,8 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const logout = () => {
     dispatch({ type: 'LOGOUT' });
-    clearAuthToken(); // <-- La función importada
+    // 🛑 COMENTAR TEMPORALMENTE para el diagnóstico
+    // clearAuthToken(); 
   };
 
   // El valor del contexto ahora incluye las funciones y el estado del reductor

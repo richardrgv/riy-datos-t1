@@ -147,7 +147,7 @@ async fn update_user(
     println!("Received PUT request for user ID: {}", user_id);
 
     // Obtiene el código de usuario del AppState
-    let user_state = state.usuario_conectado.lock().await;
+    let _user_state = state.usuario_conectado.lock().await;
     println!("Received PUT request for user state: ");
 
     // Obtiene el usuario del token (del middleware)

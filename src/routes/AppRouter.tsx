@@ -1,7 +1,24 @@
 // src/routes/AppRouter.tsx
 
+/* 
+Antes de usar Micrsoft 365 lo logic esra que por aca caia allogin
+=====
+Entiendo perfectamente tu configuración. 
+Tu AppRouter utiliza un flujo tradicional de autenticación basada en el estado de React 
+(user del UserContext) y redirige a la ruta /login si el usuario no está autenticado.
+
+2025-09-25
+==========
+pero ahora con la inclusión de MSAL seria:
+El desafío ahora es unificar el flujo de MSAL (Microsoft 365)
+con tu flujo existente de AppRouter de la siguiente manera:
+1. El App.tsx debe mostrar el botón de Login de Microsoft.
+2. Una vez el usuario se autentica con Microsoft, el AppRouter debe tomar el control.
+3. Pero el AppRouter solo conoce el usuario si está en el UserContext.
+*/
+
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom'; // BrowserRouter
 import MainLayout from '../layouts/MainLayout';
 import Login from '../pages/Login';
 import NotFound from '../pages/NotFound';
@@ -24,7 +41,7 @@ const AppRouter: React.FC = () => {
     console.log("Rutas dinámicas generadas:", dynamicRoutes);
 
     return (
-        <BrowserRouter>
+        //<BrowserRouter>
             <Routes>
                 <Route path="/login" element={<Login />} />
 
@@ -51,7 +68,7 @@ const AppRouter: React.FC = () => {
                 
                 <Route path="*" element={<NotFound />} />
             </Routes>
-        </BrowserRouter>
+        //</BrowserRouter>
     );
 };
 

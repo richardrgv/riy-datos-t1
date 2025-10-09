@@ -17,6 +17,7 @@ export interface User {
 export interface LoggedInUser {
     usuario: string;
     nombre: string;
+    correo?:string;
     // ... otros campos
 }
 

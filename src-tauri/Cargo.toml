@@ -30,12 +30,22 @@ sqlx = { version = "0.6", features = [
 tokio = { version = "1.35", features = ["full", "rt-multi-thread"] }
 chrono = { version = "0.4", features = ["serde"] }
 bytes = "1.10.1"
+
 # Token 2025-08.16 RichardG
-jsonwebtoken = "8" # para generar token, Or the latest version
+# ✅ AHORA: Usa la última versión para asegurar soporte de claves modernas
+# ✅ AÑADIR/CONFIRMAR:
+jsonwebtoken = "9" 
+reqwest = { version = "0.11", features = ["json", "rustls-tls"] } # Cliente HTTP Tokio 1.x
+
+
 rand = "0.8" # generar números aleatorios,
 futures-util = "0.3.30"
 futures = "0.3.31"
 
+
+# Para obtener la clave pública de Microsoft (JWKS) (opcional pero recomendado)
+# reqwest = { version = "0.11", features = ["json", "tokio-native-tls"] } # 👈 Necesita TLS para HTTPS de Azure
+# lazy_static = "1.4" # Solo si quieres usar la constante JWKS_URL como lazy_static
 
 
 [features]

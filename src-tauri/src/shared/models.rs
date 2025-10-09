@@ -52,6 +52,7 @@ pub struct UsuarioActualizable {
 pub struct LoggedInUser {
     pub usuario: String,
     pub nombre: Option<String>, // <-- CORREGIDO: Ahora es un Option<String>
+    pub correo: Option<String>, // <-- CORREGIDO: Ahora es un Option<String>
     // Puedes añadir otros campos que necesites, como rol, etc.
 }
 
@@ -72,4 +73,23 @@ pub struct LoginResponse {
 pub struct LoginData {
     pub usuario: String,
     pub password: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct MsalClaims {
+    // ⚠️ CRÍTICO: El campo 'upn' contiene el correo electrónico/usuario.
+    // Azure AD usa 'upn' (User Principal Name) o a veces 'preferred_username'.
+    // Si tu token usa 'upn', déjalo así. Si usa 'preferred_username', cámbialo.
+    pub upn: String,
+    
+    // El campo 'aud' (Audiencia) es necesario para jwt-auth (pero la librería lo valida)
+    pub aud: String,
+    
+    // El campo 'exp' (Expiración) es necesario para jwt-auth (pero la librería lo valida)
+    pub exp: i64,
+    
+    // Puedes añadir otros campos comunes si los usas, como:
+    // pub name: String,
+    // pub given_name: String,
+    // pub family_name: String,
 }

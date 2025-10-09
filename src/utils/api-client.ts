@@ -64,16 +64,18 @@ export class CustomApiError extends Error {
 // Función centralizada para llamar a cualquier comando del backend
 // Ahora acepta un argumento 'method'
 export const callBackend = async (
-    commandName: string, 
+    commandName: string | null, // 👈 ¡CORREGIDO! Ahora acepta null
     args: any = {}, 
     webRoute?: string,
     method: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'GET',
+    // ⚠️ NUEVO PARÁMETRO: Token externo para usos como MSAL
+    externalToken?: string 
 ): Promise<any> => {
     if (isTauri) {
         if (tauriInvoke) {
             return tauriInvoke(commandName, args);
         }
-    } else {
+     } else {
         // Lógica para la web
         const isGETorDELETE = method === 'GET' || method === 'DELETE';
         
@@ -88,10 +90,17 @@ export const callBackend = async (
             'Content-Type': 'application/json',
         };
 
-        if (currentToken) {
+        
+        // ⚠️ Lógica de Autorización Modificada
+        if (externalToken) {
+            // Usa el token de MSAL (Bearer Token) para esta llamada
+            headers['Authorization'] = `Bearer ${externalToken}`;
+        } else if (currentToken) {
+            // Usa el token de sesión normal si no hay token externo
             headers['Authorization'] = `Bearer ${currentToken}`;
         }
 
+    
         const options: RequestInit = {
             method,
             headers,
