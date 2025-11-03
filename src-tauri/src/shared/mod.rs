@@ -8,3 +8,7 @@ pub mod auth;
 pub mod app_errors;
 pub mod middleware; // es una carpeta
 pub mod state;
+// El nuevo módulo de persistencia de datos
+pub mod user_repository;
+pub mod utils; // 👈 DECLARACIÓN NECESARIA
+pub mod auth_providers; // es una carpeta

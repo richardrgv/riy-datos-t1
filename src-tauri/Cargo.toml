@@ -42,6 +42,7 @@ rand = "0.8" # generar números aleatorios,
 futures-util = "0.3.30"
 futures = "0.3.31"
 
+anyhow = "1.0" # <--- ¡AÑADIR ESTO!
 
 # Para obtener la clave pública de Microsoft (JWKS) (opcional pero recomendado)
 # reqwest = { version = "0.11", features = ["json", "tokio-native-tls"] } # 👈 Necesita TLS para HTTPS de Azure

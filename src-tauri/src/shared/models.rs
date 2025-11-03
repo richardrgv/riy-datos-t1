@@ -2,7 +2,7 @@
 
 use serde::{Serialize, Deserialize};
 use sqlx::FromRow;
-
+//use std::collections::HashMap; // Para los permisos
 
 // Estructura para representar un usuario
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
@@ -48,20 +48,50 @@ pub struct UsuarioActualizable {
 
 // estructuras que existen en frontend en types/api-types.ts
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, FromRow)]
+
+// 1. Estructura para el Usuario (sin rol/subRol, porque están en la tabla de mapeo)
+#[derive(Debug, Clone, Deserialize, Serialize, FromRow)] 
+//                 |          |          |
+//                 |          |          └── sqlx (para mapeo DB)
+//                 |          └── serde (para JSON)
+//                 └── serde (para recibir JSON)
+// Usamos el nombre 'LoggedInUser' para ser más explícitos en el flujo
 pub struct LoggedInUser {
-    pub usuario: String,
-    pub nombre: Option<String>, // <-- CORREGIDO: Ahora es un Option<String>
-    pub correo: Option<String>, // <-- CORREGIDO: Ahora es un Option<String>
-    // Puedes añadir otros campos que necesites, como rol, etc.
+    #[serde(rename = "usuarioID")]
+    pub usuario_id: i32,
+    // 🚨 Estos campos deben coincidir con el JSON y la DB
+    pub usuario: Option<String>,
+    pub nombre: Option<String>,
+    // Lo hacemos obligatorio, ya que es crucial para el login B2B/B2C
+    pub correo: Option<String>,
 }
+// 2. Estructura para la ASIGNACIÓN DE ROL ESPECÍFICA DE LA APLICACIÓN
+#[derive(Debug, Clone, sqlx::FromRow, Serialize, Deserialize)]
+pub struct UserRoleAssignment {
+    pub rol: String,
+    // Usamos el alias de Rust, pero sqlx lo mapea de 'subRol' de la DB
+    #[sqlx(rename = "subRol")] 
+    pub sub_rol: String, 
+}
+
+
+
+
+// se usara LoggedInUser
 
 #[derive(Debug, Serialize, Deserialize, FromRow, Clone)]
 pub struct User {
+    // 🚨 CAMBIO: ID opcional (None antes de insertar, Some(id) después)
+    pub usuario_id: Option<i32>,
+
     pub usuario: String,
     pub nombre: String,
     pub correo: String,
 }
+
+/* 
+se usara: AuthResponsePayload
+
 // Tipo para la respuesta completa del login del backend
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LoginResponse {
@@ -69,6 +99,9 @@ pub struct LoginResponse {
     pub user: User,
     pub permissions: Vec<String>,
 }
+*/
+
+
 #[derive(Debug, Deserialize, Serialize)]
 pub struct LoginData {
     pub usuario: String,
@@ -93,3 +126,29 @@ pub struct MsalClaims {
     // pub given_name: String,
     // pub family_name: String,
 }
+
+
+
+// --- Solicitud (Input) ---+++++++++++++++++++++++++++++++++++++++++++++++++++
+#[derive(Debug, Deserialize)]
+pub struct AuthRequestPayload {
+    // El 'code' de Google O el 'access token' de MSAL
+    pub proof_of_identity: String, 
+    // Identificador: 'google', 'msal-corp', o 'msal-personal'
+    pub provider: String, 
+    // URI necesaria para el intercambio de código (solo para Google)
+    pub redirect_uri: String, 
+}
+
+// --- Respuesta (Output) ---
+// Esta estructura debe coincidir con la interfaz `AuthResponse` en api-client.ts
+#[derive(Debug, Serialize)]
+pub struct AuthResponsePayload {
+    // El JWT propio de la aplicación (para la sesión de React)
+    pub app_jwt: String, 
+    // Datos del usuario (de su DB), que UserContext necesita
+    pub user: LoggedInUser, 
+    // Permisos necesarios para el MainLayout (ej. ["DASHBOARD_VIEW", "ADMIN_PANEL"])
+    pub permissions: Vec<String>, 
+}
+

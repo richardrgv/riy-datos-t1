@@ -8,10 +8,6 @@ use dotenv::dotenv;
 //use tauri::{Manager, State};
 use sqlx::{Pool, Mssql};
 
-use tokio::sync::Mutex;
-//use std::sync::Arc;
-
-
 
 // Importa el comando específico del módulo `user`
 // Declare the user module
@@ -22,25 +18,32 @@ use crate::license::{
     save_license_credentials_command, 
     check_license_status_command
 };
-
+mod api;    // 👈 ¡NECESARIO! Declara el contenido de src/api/ como el módulo 'api'
+mod shared; // Declara el módulo 'shared'
 
 // Usa el crate actual para encontrar la librería compartida
-use shared_lib::{db, models, user_logic, menu_logic};
+use shared_lib::{db, models, user_logic}; //, menu_logic};
 use crate::models::LoggedInUser; // Asegúrate de tener este import
 
 // MSAL
 use std::collections::HashSet; // 👈 Importa HashSet para la lista blanca
 use std::sync::Arc;
+use tokio::sync::Mutex; // 👈 NECESITAS ESTE Mutex para usar .await
 // librería especializada que gestione el cliente JWKS de forma nativa.
 use reqwest::Client; 
 
+// 🚨 CORRECCIÓN 1: Importar JwksClient y get_db_connection_info
+// Reemplaza 'jwks_rs' con el nombre de tu crate si es diferente.
+use jwks_rs::JwksClient; // 👈 NECESARIO para usar JwksClient::new
+//use shared_lib::db::get_db_connection_info; // 👈 Necesario para el comando de Tauri
+// ...
 
 pub struct AppState {
     pub db_pool: Mutex<Option<Pool<Mssql>>>,
     pub palabra_clave1: String,
     pub palabra_clave2: String,
     pub db_connection_url: String,
-    pub aplicativo_id: Mutex<i32>,
+    pub aplicativo_id: Arc<Mutex<i32>>,
     pub sql_collate_clause: String,
     pub aplicativo: String,
     pub auth_method: String, // <- Nuevo campo para el método de autenticación
@@ -49,9 +52,15 @@ pub struct AppState {
     // ⭐️ NUEVOS CAMPOS DE AUTENTICACIÓN MSAL ⭐️
     pub msal_client_id: String,
     pub whitelisted_domains: HashSet<String>, // Lista blanca de dominios
+    
+    // 🚨 AÑADIR CAMPOS DE AUTENTICACIÓN GOOGLE 🚨
+    pub google_client_id: String,
+    pub google_client_secret: String,
+
     // ⭐️ DEBE LLAMARSE EXACTAMENTE ASÍ ⭐️
     pub http_client: Arc<reqwest::Client>, // Cliente HTTP
     pub msal_jwks_url: String,           // URL para descargar las claves
+    pub jwt_auth_client: Arc<jwks_rs::JwksClient>, // <--- ¡Asegúrate de incluir este también!
 }
 
 
@@ -88,7 +97,12 @@ async fn main() {
         .filter(|s| !s.is_empty())
         .collect();
 
-
+    // ⭐️ Carga de variables de entorno para GOOGLE ⭐️
+let google_client_id = std::env::var("GOOGLE_CLIENT_ID")
+    .expect("GOOGLE_CLIENT_ID debe estar configurado.");
+let google_client_secret = std::env::var("GOOGLE_CLIENT_SECRET")
+    .expect("GOOGLE_CLIENT_SECRET debe estar configurado.");
+    
     // -------------------------------------------------------------------
     // ✅ INICIALIZACIÓN DEL CLIENTE JWKS USANDO 'jwks-rs::JwksClient::new'
     // -------------------------------------------------------------------
@@ -136,7 +150,7 @@ async fn main() {
         palabra_clave1,
         palabra_clave2,
         db_connection_url: db_url.to_string(),
-        aplicativo_id: Mutex::new(app_id_value),
+        aplicativo_id: app_id_value, //Mutex::new(app_id_value),
         sql_collate_clause,
         aplicativo: app_code,
         auth_method, 
@@ -144,8 +158,14 @@ async fn main() {
         // ⭐ Inicializar los nuevos campos ⭐
         msal_client_id,
         whitelisted_domains,
+
+        // 🚨 CORRECCIÓN 2: Añadir campos de Google
+        google_client_id,
+        google_client_secret,
+
         http_client,             // 👈 Cliente HTTP
         msal_jwks_url: JWKS_URL.to_string(), // 👈 URL de JWKS
+        jwt_auth_client, // <--- Usa la variable ya envuelta en Arc
     };
 
     tauri::Builder::default()
@@ -159,6 +179,7 @@ async fn main() {
             check_license_status_command,
             get_db_connection_info_command, // <-- AHORA SÍ USA ESTE COMANDO,
             user::user_login, 
+            user::user_login_external, // 🚨 ¡AÑADIR ESTE COMANDO!
             user::get_users,
             user::add_user,
             user::search_erp_users,
@@ -172,17 +193,17 @@ async fn main() {
 
 
 
-
-// **AÑADE ESTA FUNCIÓN AQUÍ**
+// src-tauri/src/main.rs (Al final del archivo)
 // Este es el comando "puente" que llama a la función de la librería compartida.
 #[tauri::command]
 async fn get_db_connection_info_command(
     state: tauri::State<'_, AppState>,
 ) -> Result<(String, String), String> {
+    
+    // La importación a esta función ya la definiste arriba: use shared_lib::db::get_db_connection_info;
     let db_url = &state.db_connection_url;
     
-    // CAMBIO CLAVE: Usa `.await` antes de `.map_err`
-    db::get_db_connection_info(db_url)
-        .await // <-- Añade .await aquí
+    shared_lib::db::get_db_connection_info(db_url)
+        .await 
         .map_err(|e| e.to_string())
 }

@@ -77,13 +77,21 @@ async fn add_user_handler(
     new_user_data: web::Json<NewUserRequest>,
 ) -> Result<impl Responder, Error> { // Change the return type here
     // Obtiene el código de usuario del AppState
-    let user_state = state.usuario_conectado.lock().await;
+
+    // ❌ ELIMINAR ESTA LÍNEA OBSOLETA:
+    //let user_state = state.usuario_conectado.lock().await;
+    
     // Obtiene el usuario del token (del middleware)
     let autor = req.extensions()
                    .get::<Claims>()
                    .map(|c| c.sub.clone())
                    .ok_or_else(|| actix_web::error::ErrorUnauthorized("Unauthorized"))?;
     let sql_collate = &state.sql_collate_clause;
+
+    // ❌ ELIMINAR ESTA LÍNEA OBSOLETA:
+    // let user_state = state.usuario_conectado.lock().await; 
+    
+   
 
     match user_logic::add_user_logic(
         &state.db_pool, 

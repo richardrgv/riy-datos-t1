@@ -9,6 +9,10 @@ use crate::models::LoggedInUser; // Asegúrate de tener este import
 // login
 use serde::{Deserialize, Serialize};
 
+// Importa AuthRequestPayload desde los modelos
+use shared_lib::models::AuthRequestPayload; 
+use shared_lib::models::AuthResponsePayload; // <-- ¡Importar esta para el retorno!
+use shared_lib::auth; // Asegúrate de importar el módulo auth de la librería compartida
 /* 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct LoginData {
@@ -234,4 +238,66 @@ pub async fn get_logged_in_username(state: &tauri::State<'_, AppState>) -> Resul
         .ok_or_else(|| "No hay un usuario conectado".to_string())?;
 
     Ok(username)
+}
+
+// src-tauri/src/user.rs (Añadir al final del archivo)
+
+
+// Comando Tauri para la autenticación externa (MSAL, Google)
+#[tauri::command]
+pub async fn user_login_external(
+    state: tauri::State<'_, AppState>,
+    // Asume que esta estructura ya fue limpiada y solo tiene proof_of_identity, provider, y redirect_uri
+    payload: AuthRequestPayload, 
+) -> Result<AuthResponsePayload, String> { // Retorna la respuesta completa con el JWT
+
+    println!("Payload de login externo recibido: {:?}", payload);
+
+    let pool_guard = state.db_pool.lock().await;
+    let pool_ref = pool_guard.as_ref().ok_or_else(|| "DB Pool no disponible".to_string())?;
+
+    // 🚨 OBTENER PARÁMETROS CRÍTICOS DEL ESTADO 🚨
+    // 1. Aplicativo ID (el i32 simple)
+    let aplicativo_id = state.aplicativo_id; // Ya fue corregido a i32 simple
+
+    // 2. Secretos y configuraciones
+    let http_client = &state.http_client;
+    let whitelisted_domains = &state.whitelisted_domains;
+    let msal_client_id = &state.msal_client_id;
+    let msal_jwks_url = &state.msal_jwks_url;
+    let google_client_id = &state.google_client_id;
+    let google_client_secret = &state.google_client_secret;
+    // 🚨 El nuevo secreto JWT
+    let jwt_secret = &state.jwt_secret; 
+
+    // 3. Llamar a la lógica de autenticación centralizada
+    let auth_result = auth::process_external_auth(
+        pool_ref,
+        payload,
+        aplicativo_id,
+        http_client,
+        whitelisted_domains,
+        msal_client_id,
+        msal_jwks_url,
+        google_client_id,
+        google_client_secret,
+        jwt_secret, // 👈 ¡EL PARÁMETRO FALTANTE!
+    ).await;
+
+    match auth_result {
+        Ok(response) => {
+            // 4. Si el login es exitoso, guarda el usuario en el estado de Tauri
+            let mut user_state_guard = state.usuario_conectado.lock().await;
+            *user_state_guard = Some(response.user.clone()); 
+            
+            println!("Usuario autenticado exitosamente: {}", response.user.usuario);
+            // 5. Devuelve la respuesta completa con el JWT
+            Ok(response)
+        },
+        Err(e) => {
+            // 6. Manejo de errores (ej. token inválido, email no permitido, error de DB)
+            eprintln!("Error en el login externo: {:?}", e);
+            Err(format!("Error de autenticación: {}", e))
+        }
+    }
 }

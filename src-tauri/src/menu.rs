@@ -1,7 +1,7 @@
 // src-tauri/src/menu.rs
 use tauri::State;
 use shared_lib::{menu_logic, app_errors};
-use crate::state::AppState;
+use shared_lib::state::AppState;
 use shared_lib::menu_models::MenuItem;
 
 // #[tauri::command] es la macro que lo convierte en un comando RPC

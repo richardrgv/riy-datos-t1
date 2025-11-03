@@ -3,7 +3,10 @@ import { callBackend, setAuthToken, isTauri} from '../utils/api-client'; // Impo
 import { LoginResponse, UserCredentials } from '../types/api-types';
 import { PUBLIC_API_PATH } from '../api-config';
 
-
+/*
+use crate::models::{AuthRequestPayload, AuthResponsePayload, LoggedInUser};
+use crate::db::{DbConnection, get_user_by_email, create_or_update_user};
+*/
 // Define la estructura de datos que esperamos que el backend de Rust nos devuelva.
 // Ajusta esto para que coincida con tus tipos reales de User y Permissions
 interface UserDataResponse {
@@ -119,3 +122,94 @@ export const processMSALLogin = async (accessToken: string): Promise<UserDataRes
         throw new Error("Fallo en la autenticación MSAL. Verifique que su usuario existe en el sistema.");
     }
 };
+
+/* src/services/auth_service.rs
+
+
+// 🚨 Módulos que necesitarás implementar para interactuar con Google y MS
+use crate::auth_providers::{google, microsoft}; 
+
+// Lista de dominios B2B (Mantenida por configuración o DB)
+const B2B_DOMAINS: [&str; 2] = ["miempresa-proveedora.com", "partnercorp.com"];
+
+// ----------------------------------------------------------------------
+// FUNCIÓN PRINCIPAL DE PROCESAMIENTO
+// ----------------------------------------------------------------------
+
+pub async fn process_external_auth(
+    conn: &DbConnection, // Conexión a la base de datos
+    payload: AuthRequestPayload,
+) -> Result<AuthResponsePayload, anyhow::Error> {
+
+    // 1. VALIDACIÓN y EXTRACCIÓN de IDENTIDAD UNIFICADA
+    let (email, unique_id) = match payload.provider.as_str() {
+        "google" => {
+            // Intercambio de código por ID Token, validación y extracción del email/sub
+            google::validate_code_and_get_identity(&payload.proof_of_identity, &payload.redirect_uri).await?
+        }
+        "msal-corp" | "msal-personal" => {
+            // Validación del Access Token de MSAL (requiere claves públicas de MS)
+            microsoft::validate_token_and_get_identity(&payload.proof_of_identity).await?
+        }
+        _ => return Err(anyhow::anyhow!("Proveedor de autenticación no soportado")),
+    };
+
+    // 2. LÓGICA DE VINCULACIÓN Y ROLES (B2B/B2C)
+    // -----------------------------------------------------------
+    
+    // a) Intenta encontrar al usuario en la DB por email
+    let existing_user_result = get_user_by_email(conn, &email).await;
+    
+    let domain = email.split('@').nth(1).unwrap_or_default();
+    let is_b2b_domain = B2B_DOMAINS.contains(&domain);
+
+    let final_user: LoggedInUser = match existing_user_result {
+        // b) USUARIO YA EXISTE: VINCULAR Y ACTUALIZAR
+        Ok(mut user) => {
+            // Actualizar el ID de proveedor en la DB si es nuevo.
+            create_or_update_user(conn, &mut user, &payload.provider, &unique_id).await?;
+            user // Retorna el usuario existente/actualizado
+        }
+        
+        // c) USUARIO NO EXISTE: DECIDIR CREACIÓN AUTOMÁTICA
+        Err(_) => {
+            if is_b2b_domain {
+                // Dominio B2B sin registro previo -> BLOQUEAR ACCESO
+                return Err(anyhow::anyhow!("Acceso denegado: Usuario corporativo requiere registro previo."));
+            } else {
+                // Dominio B2C/Genérico -> CREAR AUTOMÁTICAMENTE
+                let new_role = "Cliente".to_string(); 
+                let new_user = LoggedInUser {
+                    id: uuid::Uuid::new_v4().to_string(), // Generar un ID nuevo
+                    email,
+                    username: email.split('@').next().unwrap_or("usuario").to_string(),
+                    role: new_role,
+                };
+                
+                // Guardar el nuevo usuario y su ID de proveedor
+                create_or_update_user(conn, &new_user, &payload.provider, &unique_id).await?;
+                new_user
+            }
+        }
+    };
+    
+    // 3. GENERACIÓN DEL JWT PROPIO DE LA APLICACIÓN
+    // -----------------------------------------------------------
+    let app_jwt = jwt::create_app_jwt(&final_user)?;
+    
+    // 4. ASIGNACIÓN DE PERMISOS (Basado en el rol B2B/B2C)
+    // -----------------------------------------------------------
+    let permissions = match final_user.role.as_str() {
+        "Proveedor" => vec!["DASHBOARD_VIEW".to_string(), "PROV_DATA_EDIT".to_string()],
+        "Cliente" => vec!["DASHBOARD_VIEW".to_string(), "PROFILE_EDIT".to_string()],
+        _ => vec![], // Roles sin permisos por defecto
+    };
+
+    // 5. RETORNAR RESPUESTA FINAL
+    Ok(AuthResponsePayload {
+        app_jwt,
+        user: final_user,
+        permissions,
+    })
+}
+    */

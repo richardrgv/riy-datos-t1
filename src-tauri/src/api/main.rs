@@ -4,13 +4,15 @@
 Es el servidor web de Rust (la API que usa Actix, etc.) que se enlaza a http://127.0.0.1:3000.
       ====================
 */
+use dotenv::dotenv; // ✅ CORRECCIÓN use dotenvy;
 
 use actix_cors::Cors;
 use actix_web::{
     web, App, HttpServer,
     middleware::Logger};
 use shared_lib::{db, state::AppState, middleware::auth_middleware::Authenticated};
-use dotenv::dotenv;
+//use dotenv::dotenv;
+
 // Importa los módulos de rutas
 mod routes;
 use routes::{auth_route, license_route, user_route, menu_route};
@@ -24,7 +26,7 @@ use tokio::sync::Mutex;
 
 
 mod msal_security_logic; // Declara el módulo de validación MSAL
-mod utils;             // Declara el módulo de utilidades compartidas
+//mod utils;             // Declara el módulo de utilidades compartidas
 use std::collections::HashSet;
 mod errors; // 👈 DECLARACIÓN DEL NUEVO MÓDULO DE ERRORES
 
@@ -34,13 +36,16 @@ use std::sync::Arc;
 
 // URL DE MICROSOFT PARA OBTENER LAS CLAVES PÚBLICAS (JWKS)
 // Usamos el endpoint común de v2.0 para compatibilidad con Azure AD
-const JWKS_URL: &str = "https://login.microsoftonline.com/common/discovery/v2.0/keys"; 
+//const JWKS_URL: &str = "https://login.microsoftonline.com/common/discovery/v2.0/keys";
+const JWKS_URL_COMMON: &str = "https://login.microsoftonline.com/common/discovery/v2.0/keys"; 
+// ^^^ NOTA: Cambié el nombre de la constante para evitar confusión con la que usas abajo.
 // ...
 // ... Continúa hasta la inicialización del estado...
 
 //#[actix_web::main]
 #[tokio::main] // 👈 Usamos el macro de Tokio para asegurar la inicialización del runtime.
 async fn main() -> std::io::Result<()> {
+    // 🚨 PASO CLAVE: Cargar el archivo .env
     dotenv().ok();
     
     // ... existing variable loading ...
@@ -77,6 +82,9 @@ async fn main() -> std::io::Result<()> {
     // ⭐️ CARGA DE VARIABLES DE ENTORNO MSAL ⭐️
     let msal_client_id = std::env::var("MSAL_CLIENT_ID").expect("MSAL_CLIENT_ID must be set");
     println!("Backend web: MSAL Client ID obtenido.");
+    // añadido
+    let msal_audience_uri = std::env::var("MSAL_AUDIENCE_URI").expect("MSAL_AUDIENCE_URI must be set");
+    println!("Backend web: MSAL_AUDIENCE_URI obtenido.");
 
     let domains_string = std::env::var("WHITELISTED_DOMAINS")
         .expect("WHITELISTED_DOMAINS (separados por coma) must be set.");
@@ -88,9 +96,20 @@ async fn main() -> std::io::Result<()> {
         .collect();
     println!("Backend web: Lista blanca de dominios cargada.");
 
+    // ⭐️ CARGA DE VARIABLES DE ENTORNO GOOGLE ⭐️
+    let google_client_id = std::env::var("GOOGLE_CLIENT_ID")
+        .expect("GOOGLE_CLIENT_ID debe estar configurado para la autenticación de Google.");
+    println!("Backend web: Google Client ID obtenido.");
+
+    let google_client_secret = std::env::var("GOOGLE_CLIENT_SECRET")
+        .expect("GOOGLE_CLIENT_SECRET debe estar configurado para la autenticación de Google.");
+    println!("Backend web: Google Client Secret obtenido.");
+
+
    // -------------------------------------------------------------------
     // ✅ NUEVA INICIALIZACIÓN DE REQWEST
     // -------------------------------------------------------------------
+    // 🚨 NOTA: Estás usando una URL específica aquí, no la JWKS_URL_COMMON de arriba.
     const JWKS_URL: &str = "https://login.microsoftonline.com/6e0ae27f-ee36-48dd-aa27-00166964baba/discovery/v2.0/keys";
 
     // 1. Crear el cliente Reqwest (síncrono)
@@ -120,7 +139,12 @@ async fn main() -> std::io::Result<()> {
         palabra_clave1,
         palabra_clave2,
         db_connection_url: db_url.to_string(),
+
+        // 🚨 CAMBIO CRÍTICO: Elimina el Arc<Mutex<...>> y usa el i32 directamente.
+        // Asumiendo que tu shared_lib::state::AppState ahora tiene 'aplicativo_id: i32'.
+        // ✅ CORRECTION: Wrap the i32 value in Arc<Mutex<i32>>
         aplicativo_id: Arc::new(Mutex::new(app_id_value)),
+  
         sql_collate_clause,
         aplicativo: app_code,
         auth_method,
@@ -128,7 +152,13 @@ async fn main() -> std::io::Result<()> {
         jwt_secret, // Add this line
         // ⭐ INYECTAR CAMPOS MSAL ⭐
         msal_client_id,
+        msal_audience_uri, // es api + client id
         whitelisted_domains,
+
+        // 🚨 CAMBIO NUEVO: INYECTAR CAMPOS GOOGLE 🚨
+        google_client_id,
+        google_client_secret,
+
         // ⭐️ AÑADIR EL CLIENTE JWKS AL ESTADO ⭐️
         http_client,                          // 👈 Cliente HTTP
         msal_jwks_url: JWKS_URL.to_string(), // 👈 URL de JWKS 
@@ -155,10 +185,10 @@ async fn main() -> std::io::Result<()> {
             .service(
                 web::scope("/api/public")
                     .configure(license_route::license_config_pub)
-                    .configure(auth_route::auth_config_pub)
+                    .configure(auth_route::auth_config) //_pub)
                     // ⭐ AÑADIR LA RUTA MSAL DENTRO DE PUBLIC ⭐
                     // Usaremos un handler que definiremos en auth_route
-                    .route("/auth/msal-login", web::post().to(auth_route::msal_login_handler))
+                    //.route("/auth/msal-login", web::post().to(auth_route::msal_login_handler))
             )
             // Separate scope for protected endpoints
             .service(

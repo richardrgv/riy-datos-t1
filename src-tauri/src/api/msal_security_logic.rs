@@ -1,10 +1,10 @@
 // src-tauri/src/api/msal_security_logic.rs
-use base64::{engine::general_purpose, Engine as _}; // ✅ Sintaxis correcta para v0.22+
+//use base64; //::{engine::general_purpose, Engine as _}; // ✅ Sintaxis correcta para v0.22+
 
 use serde::{Deserialize, Serialize};
 
 // ✅ SOLUCIÓN AL ERROR DE IMPORTACIÓN DEL CLIENTE JWKS
-use jsonwebtoken::{decode, decode_header, DecodingKey, Validation};
+use jsonwebtoken::{decode_header, DecodingKey};
 use reqwest::Client;
 use serde_json::Value; // Para buscar en el JSON de JWKS
 use std::error::Error;
@@ -13,11 +13,11 @@ use std::error::Error;
 // ⚠️ Asegúrate de que estos tipos estén definidos en tu proyecto:
 use shared_lib::{
     state::AppState,
-    models::{self, User}, // Importar models::* para usar models::RiyUser, models::Permission, etc.
+    models::{self}, // Importar models::* para usar models::RiyUser, models::Permission, etc.
 };
 use shared_lib::auth;
-use crate::utils::get_user_permissions;
-use crate::errors::CustomError; // Tu tipo de error local
+use shared_lib::utils::get_permissions_by_app;
+use super::errors::CustomError; // Tu tipo de error local
 
 
 // -------------------------------------------------------------
@@ -194,10 +194,21 @@ pub async fn validate_and_get_user(
     .map_err(|e| Box::new(CustomError::new(500, &format!("Error de DB al buscar usuario: {}", e))) as Box<dyn std::error::Error>)?
     .ok_or_else(|| Box::new(CustomError::new(404, "Usuario válido de Azure, pero no existe en RIY-DATOS.")) as Box<dyn std::error::Error>)?;
 
-    // 5. OBTENER PERMISOS
+    // 5. OBTENER PERMISOS// 🚨 Paso 1: Extraer el i32 de Option<i32> y manejar el error de datos (si el ID fuera None)
+    let user_id = riy_user.usuario_id
+        .ok_or_else(|| {
+            // Error de integridad de datos: el usuario existe, pero el ID es nulo
+            Box::new(CustomError::new(500, "Error interno: ID de usuario nulo para usuario autenticado.")) as Box<dyn std::error::Error>
+        })?; // El '?' propaga el error de la misma manera que el código circundante
     
     // Obtener los permisos (Usamos la ruta correcta: utils::get_user_permissions)
-    let permissions = get_user_permissions(&app_state.db_pool, &riy_user.usuario).await
+    let permissions = get_permissions_by_app(
+            &app_state.db_pool,
+            // 🚨 CORRECCIÓN 1: Pasar el ID del usuario (i32), no el nombre de usuario (&String)
+            user_id, // Ahora es i32 (no Option<i32>)
+            // 🚨 CORRECCIÓN 2: Añadir el argumento faltante: aplicativo_id (i32)
+            *app_state.aplicativo_id.lock().await
+        ).await
         .map_err(|e| Box::new(CustomError::new(500, &format!("Error de DB al obtener permisos: {}", e))) as Box<dyn std::error::Error>)?;
 
     // 6. DEVOLVER RESULTADO

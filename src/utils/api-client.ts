@@ -6,6 +6,10 @@
                         para check_license_status_command.
 2025-08-14  RichardG    Manejo de errores
 */
+
+import { PUBLIC_API_PATH } from '../api-config'; // 🚨 IMPORTAR LA CONSTANTE
+
+import { LoggedInUser } from '../types/api-types';
 //import { API_BASE_URL } from '../api-config';
 // Define una interfaz para el error estructurado que esperas
 export interface ApiErrorResponse {
@@ -135,5 +139,57 @@ export const callBackend = async (
         }
 
         return await response.json();
+    }
+};
+
+// 🚨 Define el tipo esperado de la respuesta final del backend de Rust
+export interface AuthResponse {
+    app_jwt: string; 
+    user: LoggedInUser; // El tipo LoggedInUser de tu UserContext
+    permissions: string[];
+}
+
+// ⚠️ FUNCIÓN UNIFICADA DE AUTENTICACIÓN
+export const processAuthCode = async (
+    // Es el CÓDIGO de Google o el ACCESS TOKEN de MSAL
+    codeOrToken: string, 
+    // Identifica el flujo
+    provider: 'google' | 'msal-corp' | 'msal-personal', 
+    // URI necesaria para el intercambio de código (solo para Google)
+    redirectUri: string 
+): Promise<AuthResponse> => {
+    
+    // 🚨 El endpoint en Rust que manejará los 3 flujos
+    // 🚨 CORRECCIÓN CRÍTICA: Construir el webRoute completo
+    const webRoute = `${PUBLIC_API_PATH}/auth/process-auth`; 
+    // webRoute ahora es "/api/public/auth/process-auth"
+    const method = 'POST';
+    
+    // Payload que el backend de Rust espera
+    const payload = {
+        proof_of_identity: codeOrToken, // El código o el token
+        provider: provider,
+        redirect_uri: redirectUri, // Para Google, será la URL completa
+    };
+
+    console.log(`[API CLIENT] Enviando solicitud a Rust para el proveedor: ${provider}`);
+
+    try {
+        // Llama a tu función de comunicación con el backend (Web o Tauri)
+        const response: AuthResponse = await callBackend(
+            // Nombre del comando Tauri, ej: 'process_auth_code_command'
+            'process_auth_code_command', 
+            payload, 
+            webRoute, 
+            method
+        );
+        
+        // El AuthContext espera una respuesta que cumpla con AuthResponse
+        return response; 
+        
+    } catch (error) {
+        // Captura y relanza el error para que AuthContext lo maneje
+        console.error(`[API ERROR] Falló la autenticación con ${provider}:`, error);
+        throw error;
     }
 };

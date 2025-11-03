@@ -2,4 +2,6 @@
 
 pub mod routes; // Exporta el módulo de rutas (que contiene auth_routes.rs)
 pub mod msal_security_logic; // Exporta la lógica de seguridad MSAL
-pub mod utils; // 👈 EXPORTA EL NUEVO MÓDULO DE UTILIDADES
+pub mod errors;
+
+

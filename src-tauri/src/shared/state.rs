@@ -4,7 +4,7 @@ use sqlx::{Pool, Mssql};
 use tokio::sync::Mutex;
 use std::collections::HashSet;
 // librería especializada que gestione el cliente JWKS de forma nativa.
-use reqwest::Client; // Cliente HTTP
+//use reqwest::Client; // Cliente HTTP
 use std::sync::Arc;
 
 #[derive(Clone)]
@@ -22,7 +22,13 @@ pub struct AppState {
 
     // ⭐ NUEVOS CAMPOS MSAL ⭐
     pub msal_client_id: String,
+    pub msal_audience_uri: String,
     pub whitelisted_domains: HashSet<String>,
+
+    // ⭐️ CORRECCIÓN NECESARIA: AÑADE ESTOS CAMPOS ⭐️
+    pub google_client_id: String,
+    pub google_client_secret: String,
+    
     // ✅ AÑADIR:
     pub http_client: Arc<reqwest::Client>, // Cliente HTTP
     pub msal_jwks_url: String,           // URL para descargar las claves

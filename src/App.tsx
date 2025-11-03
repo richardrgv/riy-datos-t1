@@ -22,11 +22,12 @@ import AppRouter from './routes/AppRouter';
 import './App.css';
 
 
-import { LoginMSALPage } from './components/LoginMSALPage'; 
-//import MainLayout from './layouts/MainLayout';
+// 🚨 CAMBIO CRÍTICO: Importar el componente de login unificado
+import { LoginPage } from './components/LoginPage'; 
+
 
 const App = () => {
-    const { authState, handleLogin } = useAuth();
+    const { authState, handleLogin, handleLogout } = useAuth(); // 👈 Asegúrese de exponer handleLogout
     
     // 🚨 Log para diagnóstico final
     console.log("APP.tsx RENDER: Estado de Autenticación:", authState); 
@@ -37,8 +38,9 @@ const App = () => {
             return <div className="app-loading-container"><h1>Cargando Aplicación...</h1></div>; 
         
         case 'needs_login':
-            // Muestra la página de login (puedes pasar handleLogin al botón)
-            return <LoginMSALPage handleLogin={handleLogin} />; 
+               // 🚨 CAMBIO CRÍTICO: Usar LoginPage
+            // Nota: handleLogin aquí ahora es una función que inicia el flujo de tu aplicación.
+            return <LoginPage handleLogin={handleLogin} handleLogout={handleLogout} />; 
             
         case 'app_ready':
             // 3. Muestra la aplicación completa (el Router)

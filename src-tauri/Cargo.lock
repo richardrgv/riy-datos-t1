@@ -3281,6 +3281,7 @@ dependencies = [
  "actix-cors",
  "actix-web",
  "aes-gcm",
+ "anyhow",
  "base64 0.22.1",
  "bytes",
  "chrono",

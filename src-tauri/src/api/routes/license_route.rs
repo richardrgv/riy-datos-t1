@@ -6,7 +6,7 @@ use actix_web::{
     Responder, 
     web};
 use shared_lib::state::AppState;
-use shared_lib::license_logic::LicenseCheckResult;
+//use shared_lib::license_logic::LicenseCheckResult;
 
 // ⭐ Agregamos la ruta para obtener info de la DB ⭐
 use serde::{Deserialize};
