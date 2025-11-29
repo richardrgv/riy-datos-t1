@@ -12,3 +12,4 @@ pub mod state;
 pub mod user_repository;
 pub mod utils; // 👈 DECLARACIÓN NECESARIA
 pub mod auth_providers; // es una carpeta
+pub mod config; // Asegúrate de que esta línea esté presente

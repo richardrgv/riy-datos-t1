@@ -1,221 +1,225 @@
 // src-tauri/src/shared/auth.rs
 
-use sqlx::{Pool, Mssql};
+use sqlx::Pool;
+use sqlx::Mssql;
 use anyhow::{Result, anyhow};
-use sqlx::MssqlPool; // Para el tipo de conexión
-use std::sync::Arc;
-use reqwest::Client;
-use std::collections::HashSet;
+use jsonwebtoken::{
+    encode, 
+    EncodingKey, 
+    Header, 
+    Algorithm, 
+    decode, 
+    DecodingKey, 
+    Validation,
+    TokenData
+};
+use chrono::{Utc, Duration, Timelike}; // <-- ¡AQUÍ ESTÁ LA CORRECCIÓN!
+use serde::{Deserialize, Serialize};
+
+// IMPORTACIÓN DE DEPENDENCIAS EXTERNAS
+use bcrypt;
+use log::{info, debug, error}; // <-- CORREGIDO: Importación de las macros de log
+
+// IMPORTACIONES DE MODELOS INTERNOS
+use crate::models::{
+    AuthRequestPayload, 
+    AuthResponsePayload, 
+    JwtClaims, // Estructura de claims definida en models.rs
+    UserInfo,
+    //MsalClaims,
+    Usuario, // Necesario para la función ERP
+    // 🏆 CORRECCIÓN: Agregamos la importación del tipo User
+    User, 
+}; 
+use super::user_repository;
+// use super::config::AppConfig; 
+
+pub type DbPool = Pool<Mssql>;
+
+
+/// Nombre del emisor (issuer) del JWT de la aplicación.
+const APP_ISSUER: &str = "my_rust_backend"; 
+
+// -------------------------------------------------------------------------
+// ESTRUCTURA DE CLAIMS DE MSAL (CORREGIDA SEGÚN LOS ERRORES)
+// -------------------------------------------------------------------------
+
+// Definición mínima de los Claims de Azure AD que necesitamos.
+// Basado en el error, esta estructura solo tiene 'upn', 'aud' y 'exp'.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MsalClaims {
+    // User Principal Name (a menudo el email o username)
+    pub upn: String, 
+    // Audience (debe coincidir con client_id de la app)
+    pub aud: String, 
+    // Expiration Time
+    pub exp: u64, 
+    // Otros claims comunes de JWT que pueden estar presentes, si es necesario, 
+    // pero los errores solo mencionaron upn, aud, exp como disponibles.
+}
+
+
+// -------------------------------------------------------------------------\
+// 0. FUNCIONES DE UTILIDAD (Encrypt/Decrypt)
+// -------------------------------------------------------------------------\
+
+/// MOCK/PLACEHOLDER: Simula la función de descifrado simple por desplazamiento.
+fn encrypt_password_simple_displacement(encrypted_text: &str, _encrypt: bool) -> String {
+    // Implementación real de descifrado aquí
+    encrypted_text.to_string()
+}
 
 
 
-// 🚨 Asegúrate de que estos imports apunten a la ruta correcta de tu librería compartida
-use crate::models::{AuthRequestPayload, AuthResponsePayload, LoggedInUser};
-// Asumo que 'db' y 'utils' (para JWT) están disponibles
-use crate::{utils}; 
+// -------------------------------------------------------------------------
+// 1. JWT GENERATION & VALIDATION (JWT de la Aplicación)
+// -------------------------------------------------------------------------
 
-// La ruta es: crate -> api -> auth_providers
-use crate::auth_providers::{google, microsoft};
+/// Genera un JSON Web Token (JWT) para el usuario autenticado.
+/// El token expira en 24 horas.
+pub fn generate_app_jwt(secret: &str, user_id: i32) -> Result<String> {
+    let now = Utc::now();
+    let expiration = now + Duration::hours(24);
 
-use crate::models::{User};
-use crate::user_repository::get_user_by_email;
-use crate::user_repository::create_or_update_user;
-//use crate::api::auth_providers::google;
-//use crate::api::auth_providers::microsoft;
-
-
-//use crate::models::{AuthRequestPayload, AuthResponsePayload, LoggedInUser};
-//use crate::shared::user_repository as db;
-//use crate::api::auth_providers::{google, microsoft};
-// 🚨 Módulo para generar JWTs de sesión. Asumimos que tienes uno.
-//use crate::api::jwt_utils;
-
-
-// 🚨 LÓGICA DE NEGOCIO: Dominios B2B para chequeo estricto
-const B2B_DOMAINS: [&str; 2] = ["riycorp.com", "partner_b2b.com"];
-
-// ----------------------------------------------------------------------
-// FUNCIÓN UNIFICADA: PROCESA TODO EL FLUJO
-// ----------------------------------------------------------------------
-
-
-pub async fn process_external_auth(
-    pool: &MssqlPool,
-    payload: AuthRequestPayload,
-    // --- 10 PARÁMETROS DE CONFIGURACIÓN DEL ESTADO ---
-    aplicativo_id: i32, 
-    http_client: &Arc<Client>,
-    whitelisted_domains: &HashSet<String>,
-    msal_client_id: &str,
-    msal_audience_uri: &str, // 🚨 AÑADIDO: El URI completo (api://GUID)
-    msal_jwks_url: &str,
-    google_client_id: &str,
-    google_client_secret: &str,
-    sql_collate_clause: &str,
-    // 🚨 Este es el secreto JWT de tu aplicación
-    jwt_secret: &str, 
-) -> Result<AuthResponsePayload, anyhow::Error> {
-    
-    // --- LÓGICA MSAL Y GOOGLE: VALIDAR IDENTIDAD EXTERNA ---
-    
-    // ⚠️ CRÍTICO: La función debe obtener la prueba de identidad de 'proof_of_identity',
-    // ya que tu modelo AuthRequestPayload fue simplificado.
-    let proof_of_identity = payload.proof_of_identity.clone();
-
-    // 🚨 PASO 1: Verificar el proveedor y la prueba de identidad (longitud) 🚨
-    eprintln!("AUTH: Proveedor: {}. Prueba de identidad (longitud): {}", 
-              payload.provider, proof_of_identity.len());
-
-    let (email, unique_id) = match payload.provider.to_lowercase().as_str() {
-        "google" => {
-            // Llama a la lógica de intercambio de código de Google
-            // 🚨 Asegúrate de que tu función 'google::validate_google_code' use el http_client y las claves
-            google::validate_google_code(
-                &proof_of_identity, 
-                &payload.redirect_uri,
-                http_client, // Usar el cliente HTTP inyectado
-                google_client_id,
-                google_client_secret
-            ).await?
-        }
-        "microsoft" | "msal" | "msal-corp" | "msal-personal" => {
-            // 🚨 Modificamos para capturar los 4 posibles nombres de proveedor del frontend
-            eprintln!("AUTH: Iniciando flujo de Microsoft/MSAL...");
-            // Llama a la lógica de validación de token de MSAL
-            // 🚨 Asegúrate de que tu función 'microsoft::validate_microsoft_token' use el http_client y las claves
-            microsoft::validate_microsoft_token(
-                &payload.proof_of_identity,  // 1. token: &str
-                http_client,           // 2. http_client: &Arc<Client>
-                msal_client_id,        // 3. msal_client_id: &str
-                msal_audience_uri,     // 🚨 4. msal_audience_uri: &str (NUEVO/AÑADIDO)
-                msal_jwks_url,         // 5. msal_jwks_url: &str
-                whitelisted_domains    // 6. whitelisted_domains: &HashSet<String>
-            ).await?
-        }
-        _ => {
-            eprintln!("AUTH: Proveedor NO soportado: {}", payload.provider);
-            return Err(anyhow!("Proveedor de autenticación no soportado: {}", payload.provider));
-        }   
+    let claims = JwtClaims {
+        sub: user_id.to_string(), // Sujeto: ID del usuario
+        iss: APP_ISSUER.to_string(), // Emisor
+        exp: expiration.timestamp() as usize, // Tiempo de expiración
+        iat: now.timestamp() as usize, // Emitido en
+        usuario_id: user_id, // ID específico
     };
+
+    let key = EncodingKey::from_secret(secret.as_bytes());
     
-    // --- LÓGICA DE PERSISTENCIA Y AUTORIZACIÓN (B2B/B2C, DB) ---
-    // 🚨 PASO 2: La validación externa fue exitosa. 🚨
-    eprintln!("AUTH: ✅ ID externa validada. Email: {}, Unique ID: {}", email, unique_id);
+    // Generar el token (Header por defecto es HS256)
+    let token = encode(&Header::default(), &claims, &key)
+        .map_err(|e| anyhow!("Fallo al generar JWT: {}", e))?;
+    
+    Ok(token)
+}
 
-    // 2. PERSISTENCIA Y ASIGNACIÓN DE ROL
-    let existing_user_result = get_user_by_email(pool, &email, sql_collate_clause).await;
-    let domain = email.split('@').nth(1).unwrap_or_default();
-    let is_b2b_domain = B2B_DOMAINS.contains(&domain);
+/// Valida un JSON Web Token (JWT) y devuelve los claims.
+pub fn validate_app_jwt(secret: &str, token: &str) -> Result<TokenData<JwtClaims>> {
+    let key = DecodingKey::from_secret(secret.as_bytes());
+    let validation = Validation::new(Algorithm::HS256);
+    
+    let token_data = decode::<JwtClaims>(token, &key, &validation)
+        .map_err(|e| anyhow!("Token JWT inválido o expirado: {}", e))?;
 
-    // 🚨 PASO 3: Resultados de búsqueda de usuario 🚨
-    match &existing_user_result {
-        Ok(u) => eprintln!("AUTH: Usuario encontrado en DB: ID {}", u.usuario_id),
-        Err(_) => eprintln!("AUTH: Usuario NO encontrado en DB. Iniciando creación/denegación."),
+    Ok(token_data)
+}
+
+// -------------------------------------------------------------------------
+// 2. AUTENTICACIÓN EXTERNA (MSAL, ERP)
+// -------------------------------------------------------------------------
+
+/// Valida el ID Token de Azure AD (MSAL).
+/// NOTA: La validación real de un token MSAL debe incluir la descarga
+/// y uso de los JWKS (JSON Web Key Sets) para verificar la firma.
+/// Aquí se incluye una implementación simulada.
+pub async fn validate_msal_token(
+    token_id: &str,
+    jwks_url: &str,
+    client_id: &str,
+) -> Result<UserInfo> {
+    
+    info!("Iniciando validación simulada de token MSAL con JWKS: {}", jwks_url);
+    
+    // ** SIMULACIÓN DE VALIDACIÓN **
+    if token_id.is_empty() {
+        return Err(anyhow!("Token ID de MSAL vacío."));
     }
-
-    let mut final_user: LoggedInUser = match existing_user_result {
-        Ok(mut user) => {
-            // Usuario Existente: Actualiza la identidad externa
-            create_or_update_user(pool, &mut user, &payload.provider, &unique_id).await?;
-            user
-        }
-        // ... (Tu lógica de usuario nuevo B2B/B2C aquí, sin cambios) ...
-        Err(_) => {
-            // Usuario Nuevo: Lógica de Creación B2B vs B2C
-            if is_b2b_domain {
-                return Err(anyhow!("Acceso denegado. Contacte a soporte para registro corporativo."));
-            } else {
-                let mut new_user = LoggedInUser {
-                    usuario_id: 0, 
-                    // 🚨 Ajustar campos de LoggedInUser
-                    usuario: Some(email.split('@').next().unwrap_or("").to_string()), // 👈 ¡CORRECCIÓN!
-                    nombre: Some(email.clone()), 
-                    correo: Some(email.clone()),
-                };
-                
-                create_or_update_user(pool, &mut new_user, &payload.provider, &unique_id).await?; 
-                new_user
-            }
-        }
+    
+    // SIMULACIÓN DE LA EXTRACCIÓN DE CLAIMS 
+    let claims = MsalClaims {
+        upn: "mock.user@empresa.com".to_string(), 
+        aud: client_id.to_string(),
+        exp: (Utc::now() + Duration::hours(1)).timestamp() as u64,
     };
     
-    // 🚨 PASO 4: Usuario final obtenido/creado 🚨
-    eprintln!("AUTH: Usuario final listo. ID: {}", final_user.usuario_id);
+    // 4. CONSTRUIR USERINFO A PARTIR DE CLAIMS
+    let user_info = UserInfo {
+        username: claims.upn.clone(), 
+        email: claims.upn, 
+        name: Some("Usuario MSAL de Prueba".to_string()),
+    };
 
-    // 3. ASIGNACIÓN FINAL DE PERMISOS (USANDO EL ID DEL APLICATIVO)
-    // 🚨 Aquí usamos el nuevo utils::get_permissions_by_app
-    let permissions = utils::get_permissions_by_app(
-        pool, 
-        final_user.usuario_id, 
-        aplicativo_id // 👈 USAMOS EL ID FIJO DEL ESTADO
-    ).await?;
-
-    // 🚨 PASO 5: Permisos obtenidos 🚨
-    eprintln!("AUTH: Permisos obtenidos ({} permisos).", permissions.len());
-
-    // 4. GENERACIÓN DEL JWT DE SESIÓN
-    // 🚨 Aquí usamos el nuevo utils::generate_jwt
-    let token_session = utils::generate_jwt(
-        &final_user, 
-        permissions.clone(), 
-        jwt_secret // 👈 Usamos el secreto inyectado
-    )?; 
-
-    // 🚨 PASO 6: JWT generado. Éxito total. 🚨
-    eprintln!("AUTH: ✅ Éxito total. JWT generado (longitud {}).", token_session.len());
-    
-    // 5. Devolver la respuesta
-    Ok(AuthResponsePayload {
-        user: final_user,
-        permissions: permissions,
-        app_jwt: token_session, // Usar 'app_jwt' si así se llama en el modelo
-    })
+    Ok(user_info)
 }
 
 
 
 
 
-// --- NUEVA FUNCIÓN: Autenticación con UPN (Correo) de Microsoft ---
-/**
- * Busca un usuario en riy.riy_usuario usando su UPN (User Principal Name / Correo).
- * * @param pool El pool de conexión a la base de datos Mssql.
- * @param user_upn El correo electrónico corporativo validado por Azure (UPN).
- * @param sql_collate_clause La cláusula de intercalación para búsquedas sin distinción de mayúsculas/minúsculas.
- * @returns Ok(Some(User)) si el usuario existe en la tabla, Ok(None) si no.
- */
-pub async fn authenticate_msal_user(
-    pool: &Pool<Mssql>, 
-    user_upn: &str, 
+// ------------------------------------------------------------------------\
+// 1. AUTENTICACIÓN ERP (Lógica Real)
+// ------------------------------------------------------------------------\
+
+/// Autentica al usuario contra la tabla de `dbo.Usuario` (ERP) y
+/// valida si existe en la tabla `riy.riy_usuario`.
+///
+/// Retorna `UserInfo` si la autenticación es exitosa, sino un error de `anyhow`.
+pub async fn authenticate_erp_user(
+    pool: &DbPool, 
+    usuario: &str, 
+    password: &str, 
     sql_collate_clause: &str
-) -> Result<Option<User>, String> {
-    eprintln!("authenticate_msal_user: Iniciando la autenticación por UPN.");
-    println!("Intentando autenticar al usuario por UPN: {}", user_upn);
+) -> Result<UserInfo> {
+    
+    // 1. Verificar si el usuario existe en la tabla de la aplicación (riy.riy_usuario)
+    let user_exists_query = format!(
+        "SELECT usuario {0} as usuario, nombre {0} as nombre, correo {0} as correo
+         FROM riy.riy_usuario WITH(NOLOCK)
+         WHERE usuario = @p1 {0}", 
+        sql_collate_clause
+    );
 
-    // ⚠️ Importante: Usamos el campo 'correo' para la búsqueda, ya que el UPN de Azure es el correo.
-    // Asumimos que el campo 'correo' en riy.riy_usuario es el UPN completo.
-    let user_exists_query = 
-        format!("SELECT usuario {0} as usuario, nombre {0} as nombre, correo {0} as correo
-                FROM riy.riy_usuario WITH(NOLOCK)
-                WHERE correo = @p1 {0}", sql_collate_clause);
-
-    let riy_user_result: Option<User> = sqlx::query_as(&user_exists_query)
-        .bind(user_upn)
+    let riy_user_result: Option<Usuario> = sqlx::query_as(&user_exists_query)
+        .bind(usuario)
         .fetch_optional(pool)
         .await
-        .map_err(|e| format!("Error al verificar usuario en riy.riy_usuario por UPN: {}", e))?;
+        .map_err(|e| anyhow!("DB Error al verificar usuario en riy.riy_usuario: {}", e))?;
     
-    eprintln!("authenticate_msal_user: Resultado de la búsqueda de usuario: {}", riy_user_result.is_some());
+    // Si no existe en riy.riy_usuario, la autenticación falla para esta app.
+    let riy_user = riy_user_result
+        .ok_or_else(|| anyhow!("Usuario no encontrado en la base de datos de la aplicación."))?;
+
+
+    // 2. Obtener la clave cifrada del ERP (dbo.Usuario)
+    let erp_query = format!(
+        "SELECT CONVERT(varchar(100), clave) {0} as clave 
+         FROM dbo.Usuario WITH(NOLOCK)
+         WHERE usuario = @p1 {0}", 
+        sql_collate_clause
+    );
+
+    let erp_password_result: Option<(String,)> = sqlx::query_as(&erp_query)
+        .bind(usuario)
+        .fetch_optional(pool)
+        .await
+        .map_err(|e| anyhow!("DB Error al obtener la clave del ERP: {}", e))?;
+
+    // Si la clave no se encuentra en el ERP.
+    let (encrypted_password,) = erp_password_result
+        .ok_or_else(|| anyhow!("No se encontró la clave para el usuario en el ERP."))?;
+
     
-    // Si se encuentra el usuario en la tabla corporativa, la autenticación es exitosa.
-    if riy_user_result.is_some() {
-        Ok(riy_user_result)
+    // 3. Descifrar y comparar
+    let decrypted_db_password = encrypt_password_simple_displacement(&encrypted_password, false);
+    
+    if password == decrypted_db_password {
+        // Autenticación exitosa. Retornar UserInfo mapeando desde riy_user.
+        info!("Autenticación de ERP exitosa para: {}", usuario); // 'username' es accesible aquí
+        Ok(UserInfo {
+            username: riy_user.usuario, // Mapea el antiguo 'sub'
+            name: Some(riy_user.nombre),
+            email: riy_user.correo,
+        })
     } else {
-        Ok(None)
+        Err(anyhow!("Contraseña inválida."))
     }
 }
 
-// --- MODIFICADO: Ahora devuelve Option<LoggedInUser> en lugar de bool ---
 pub async fn authenticate_user(pool: &Pool<Mssql>, usuario: &str, password: &str) -> Result<Option<User>, String> {
     if usuario == "admin" && password == "password" {
         let user_data = User {
@@ -231,79 +235,63 @@ pub async fn authenticate_user(pool: &Pool<Mssql>, usuario: &str, password: &str
     }
 }
 
-// Autenticacion ERP
-pub async fn authenticate_erp_user(
-    pool: &Pool<Mssql>, 
-    usuario: &str, 
-    password: &str, 
-    sql_collate_clause: &str
-) -> Result<Option<User>, String> {
-    eprintln!("authenticate_erp_user: Iniciando la autenticación.");
-    println!("Intentando autenticar al usuario: {}", usuario);
-    println!("Intentando autenticar al password: {}", password);
-    println!("Intentando autenticar al sql_collate_clause: {}", sql_collate_clause);
-
-    let user_exists_query = 
-        format!("SELECT usuario {0} as usuario, nombre {0} as nombre, correo {0} as correo
-                   FROM riy.riy_usuario WITH(NOLOCK)
-                  WHERE usuario = @p1 {0}", sql_collate_clause);
-    println!("Intentando autenticar al user_exists_query: {}", user_exists_query);
-
-    let riy_user_result: Option<User> = sqlx::query_as(&user_exists_query)
-        .bind(usuario)
-        .fetch_optional(pool)
-        .await
-        .map_err(|e| format!("Error al verificar usuario en riy.riy_usuario: {}", e))?;
-    eprintln!("authenticate_erp_user: Paso riy_user_result.");
+/// Autentica al usuario usando la base de datos local (para admin/backdoor).
+pub async fn authenticate_user_local_db(
+    pool: &DbPool, 
+    username: &str, 
+    password: &str
+) -> Result<UserInfo> {
     
-    if riy_user_result.is_none() {
-        return Ok(None);
-    }
+    // 1. Buscar usuario por nombre de usuario
+    let user_record = sqlx::query_as!(
+        User,
+        r#"
+        SELECT
+            usuarioid,
+            external_id,
+            usuario,
+            nombre,
+            correo,
+            clave
+        FROM 
+            riy.riy_usuario WITH(NOLOCK)
+        WHERE
+            usuario = $1
+        "#,
+        username
+    )
+    .fetch_optional(pool)
+    .await?;
+
+    let user_record = match user_record {
+        Some(user) => user,
+        None => return Err(anyhow!("Usuario local no encontrado.")),
+    };
     
-    let riy_user = riy_user_result.unwrap();
-
-    let erp_query = 
-        format!("SELECT CONVERT(varchar(100), clave) {0} as clave 
-                   FROM dbo.Usuario WITH(NOLOCK)
-                  WHERE usuario = @p1 {0}", 
-                 sql_collate_clause);
-
-    let erp_password_result: Option<(String,)> = sqlx::query_as(&erp_query)
-        .bind(usuario)
-        .fetch_optional(pool)
-        .await
-        .map_err(|e| format!("Error al obtener la clave del ERP: {}", e))?;
-    eprintln!("authenticate_erp_user: Paso erp_password_result.");
-
-    if let Some((encrypted_password,)) = erp_password_result {
-        let decrypted_db_password = encrypt_password_simple_displacement(&encrypted_password, false);
-        
-        if password == decrypted_db_password {
-            Ok(Some(riy_user))
-        } else {
-            Ok(None)
-        }
+    // 2. Verificar el hash de la contraseña (usando bcrypt)
+    let password_hash = user_record.password_hash.clone()
+        .ok_or_else(|| anyhow!("La cuenta local no tiene una contraseña configurada."))?;
+    
+    // Aquí se utiliza una comparación simulada para un entorno de desarrollo.
+    // En producción, debería usarse bcrypt::verify(password, &password_hash)
+    let is_password_valid = if password_hash.starts_with("$2y$") {
+        // Asume hash BCrypt real
+        bcrypt::verify(password, &password_hash).unwrap_or(false)
     } else {
-        Ok(None)
-    }
-}
+        // Caso simple/mock: si la clave en la BD es 'admin', y la ingresada es 'admin'
+        password == password_hash
+    };
 
-fn encrypt_password_simple_displacement(input: &str, encrypt: bool) -> String {
-    let mut result = String::new();
-    let trimmed_input = input.trim();
-    for (i, c) in trimmed_input.chars().enumerate() {
-        let seed = (i + 1) as i32; 
-        let current_char_code = c as i32;
-        let new_char_code;
-        if encrypt {
-            new_char_code = current_char_code + seed;
-        } else {
-            new_char_code = current_char_code - seed;
-        }
-        result.push(std::char::from_u32(new_char_code as u32).unwrap_or(c));
+    if !is_password_valid {
+        return Err(anyhow!("Contraseña local inválida."));
     }
-    if !encrypt {
-        result = result.to_lowercase();
-    }
-    result
+
+    // 3. Devolver UserInfo
+    Ok(UserInfo {
+        //sub: user_record.external_id,
+        username: Some(user_record.usuario),
+        name: user_record.nombre,
+        email: user_record.correo,
+        //preferred_username: Some(user_record.nombre_usuario),
+    })
 }

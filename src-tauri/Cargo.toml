@@ -10,48 +10,50 @@ tauri-build = { version = "1", features = [] }
 
 [dependencies]
 tauri = { version = "1", features = ["shell-open", "window-all"] }
-serde = { version = "1", features = ["derive"] }
+# ✅ Mantener para serialización/deserialización
+serde = { version = "1", features = ["derive"] } 
 serde_json = "1"
-actix-web = "4"
+
+# ✅ Web Framework
+actix-web = "4" 
 actix-cors = "0.6.4"
+# ✅ Entorno
 dotenv = "0.15.0"
+# ✅ Cliente HTTP para descargar claves de B2C
+reqwest = { version = "0.11", features = ["json", "rustls-tls"] }
+# Nueva dependencia necesaria para el manejo de JWKS (claves de validación de JWTs de MSAL)
+jwks-rs = "0.1.0"
+# ✅ Core de la validación JWT
+jsonwebtoken = "9" 
+
+# ✅ Async Runtime (Asegurar que sea compatible con Actix-web 4 y Tauri)
+tokio = { version = "1.35", features = ["full", "rt-multi-thread"] } 
+
+# Otros componentes
 aes-gcm = "0.10"
 base64 = "0.22"
 hex = "0.4"
 url = "2.5.0"
-sqlx = { version = "0.6", features = [
-    "runtime-tokio-rustls", 
-    "any", 
-    "mssql",
-    "chrono", 
-    "uuid", 
-    "macros",
-] }
-tokio = { version = "1.35", features = ["full", "rt-multi-thread"] }
+sqlx = { version = "0.6", features = ["runtime-tokio-rustls", "any", "mssql", "chrono", "uuid", "macros"] }
 chrono = { version = "0.4", features = ["serde"] }
 bytes = "1.10.1"
-
-# Token 2025-08.16 RichardG
-# ✅ AHORA: Usa la última versión para asegurar soporte de claves modernas
-# ✅ AÑADIR/CONFIRMAR:
-jsonwebtoken = "9" 
-reqwest = { version = "0.11", features = ["json", "rustls-tls"] } # Cliente HTTP Tokio 1.x
-
-
-rand = "0.8" # generar números aleatorios,
+rand = "0.8"
 futures-util = "0.3.30"
 futures = "0.3.31"
-
-anyhow = "1.0" # <--- ¡AÑADIR ESTO!
-
-# Para obtener la clave pública de Microsoft (JWKS) (opcional pero recomendado)
-# reqwest = { version = "0.11", features = ["json", "tokio-native-tls"] } # 👈 Necesita TLS para HTTPS de Azure
-# lazy_static = "1.4" # Solo si quieres usar la constante JWKS_URL como lazy_static
-
+# ✅ Manejo de errores
+anyhow = "1.0" 
+lazy_static = "1.4"
+log = "0.4"
+bcrypt = "0.15"
 
 [features]
-# This feature is used for production builds or when a dev server is not specified, DO NOT REMOVE!!
-custom-protocol = ["tauri/custom-protocol"]
+# by default we use Tauri's application flow
+default = [ "custom-protocol" ]
+# this is used when running desktop apps
+custom-protocol = [ "tauri/custom-protocol" ]
+# this is used when running web apps
+web = []
+
 
 [lib]
 name = "shared_lib"

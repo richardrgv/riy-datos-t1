@@ -1,52 +1,71 @@
 // src/msalConfig.ts
 
-import { Configuration, PublicClientApplication } from "@azure/msal-browser";
-import { CacheOptions, LogLevel } from '@azure/msal-browser';
+import { 
+    Configuration, 
+    PublicClientApplication, 
+    CacheOptions, 
+    RedirectRequest,
+    PopupRequest,
+    SilentRequest // Essential for silently acquiring tokens in AuthContext
+} from "@azure/msal-browser";
 
-// --- 1. Definición de Scopes y URIs ---
-// Obtén el Client ID de las variables de entorno
+
+// --- 1. Scope and URI Definitions ---
+
+// Client ID for the Frontend Application (used by MSAL itself)
 const API_CLIENT_ID = import.meta.env.VITE_AZURE_CLIENT_ID as string;
-const API_URI = `api://${API_CLIENT_ID}`;
+// Client ID (GUID) for the Backend Rust API Application (used to build the scope URI)
+const RUST_API_CLIENT_ID = import.meta.env.VITE_RUST_API_CLIENT_ID as string;
 
-// El Scope Delegado que creaste en Azure (access_as_user)
-const API_SCOPE = `${API_URI}/access_as_user`; 
+// CRITICAL: The URI of your Rust API is its GUID, as defined in Azure
+const RUST_API_URI = `api://${RUST_API_CLIENT_ID}`;
 
-// 🚨 DEFINIR OPCIONES DE CACHE
+// CRITICAL: The Delegated Scope you defined in Azure for your Rust API ('app.access')
+// This permission is requested by the Frontend to talk to the Backend.
+export const RUST_API_SCOPE = `${RUST_API_URI}/app.access`; // <-- EXPORTED for use in AuthContext
+
+// Cache configuration
 const cacheConfig: CacheOptions = {
-    cacheLocation: "localStorage", // CRÍTICO: Asegurarse de usar localStorage
-    storeAuthStateInCookie: false, // No necesario, pero evita complicaciones
+    cacheLocation: "localStorage",
+    storeAuthStateInCookie: false,
 };
 
-// --- 2. Configuración de MSAL (Configuration) ---
+// --- 2. MSAL Configuration (Configuration) ---
 export const msalConfig: Configuration = {
     auth: {
         clientId: API_CLIENT_ID, 
-        authority: "https://login.microsoftonline.com/common", 
         
-        // 🚨 CRUCIAL: URI de redirección Nativo/Desktop (tal como está en Azure)
+        // CRITICAL B2C: Authority must point to your B2C User Flow
+        // Replace 'riyappclientes' and 'B2C_1_signin_signup_RIY' with your actual values if different
+        authority: "https://riyappclientes.b2clogin.com/riyappclientes.onmicrosoft.com/B2C_1_signin_signup_RIY", 
+        
+        // CRITICAL: The exact Redirect URI registered in Azure for Tauri/Desktop
         redirectUri: "http://localhost:1423/",
-        //redirectUri: "https://login.microsoftonline.com/common/oauth2/nativeclient", 
     },
-    // 🚨 AÑADIR LA CONFIGURACIÓN DE CACHE
+    
+    // Cache settings
     cache: cacheConfig, 
-    // ..
-   /*system: {
-        // 🚨 CRÍTICO 1: Evita que MSAL intente limpiar la URL o redirigir de forma inesperada.
-        // Esto es necesario para que el router de React (si lo usas) o Tauri tomen el control.
-        //navigateToLoginRequestUrl: false,
-        
-        // 🚨 CRÍTICO 2: Soluciona el 'response: null'
-        // Permite que MSAL lea el fragmento de URL (#code=...) incluso si está siendo manipulado
-        // por el entorno o el router (Tauri/Vite).
-        allowHash: true
+    
+    // System settings recommended for Tauri/Vite environments
+    /*system: {
+        allowHash: true, 
+        navigateToLoginRequestUrl: false, 
     }*/
 };
 
-// --- 3. Definición de Permisos para la petición de login ---
-export const loginRequest = {
-    // openid y profile son estándar. API_SCOPE pide permiso para tu API.
-    scopes: ["openid", "profile", API_SCOPE],  
+// --- 3. Request Definitions ---
+
+// Request for LOGIN (redirects to B2C)
+export const loginRequest: RedirectRequest | PopupRequest = {
+    // openid, offline_access, and your Rust API scope
+    scopes: ["openid", "offline_access", RUST_API_SCOPE] 
 };
 
-// --- 4. Crear instancia ---
+// Request for SILENT TOKEN ACQUISITION (used by AuthContext to get JWT with groups)
+export const tokenAcquisitionRequest: SilentRequest = {
+    scopes: [RUST_API_SCOPE]
+};
+
+
+// --- 4. Create MSAL Instance ---
 export const msalInstance = new PublicClientApplication(msalConfig);

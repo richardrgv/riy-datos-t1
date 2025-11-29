@@ -37,29 +37,18 @@ export const LoginPage: React.FC<LoginPageProps> = () => {
     const accounts = instance.getAllAccounts();
     const isAuthenticated = accounts.length > 0;
     
-    // --- Handlers de Autenticación Unificados ---
-    
-    // 1. Google Login (Redirección simple, ya que no usamos el SDK)
-    const handleGoogleLogin = () => {
-        window.location.href = GOOGLE_AUTH_URL;
+        
+    // ...
+    // Ya no necesitas las funciones auxiliares de Google/MSAL Personal/Corporativo
+
+    const handleB2CLogin = () => {
+        // Llama al flujo de redirección de B2C configurado en msalConfig.ts
+        // MSAL te redirigirá a la URL del Flujo de Usuario que definiste en el paso 1.
+        instance.loginRedirect(loginRequest); 
     };
-    
-    // 2. Microsoft Login Corporativo (Entra ID, su flujo actual)
-    const handleMicrosoftCorpLogin = () => {
-        // Su implementación actual de MSAL por redirección
-        instance.loginRedirect(loginRequest).catch(e => {
-            console.error("Error al iniciar login MSAL corporativo:", e);
-        });
-    };
-    
-    // 3. Microsoft Login Personal (MSA)
-    const handleMicrosoftPersonalLogin = () => {
-        const msalPersonalRequest = getMsalPersonalLoginRequest();
-        instance.loginRedirect(msalPersonalRequest).catch(e => {
-             console.error("Error al iniciar login MSAL personal:", e);
-        });
-    };
-    
+
+// ...
+
     // 4. Logout (Unificado)
     const handleLogout = () => {
         // En una app real, debería llamar a su backend para invalidar el JWT propio
@@ -69,42 +58,17 @@ export const LoginPage: React.FC<LoginPageProps> = () => {
 
 
     // 5. Renderizado Condicional de Botones
-    const renderLoginButtons = () => {
-        // Si estamos en Tauri, podríamos querer deshabilitar/cambiar los flujos MSAL (si no están configurados)
-        const isMsalTauriReady = false; // 👈 Cambie a true cuando configure Azure para Tauri
-        
+    // Reemplazar renderLoginButtons() con:
+    const renderLoginButton = () => {
         return (
-            <div className="login-buttons-group">
-                {/* Botón 1: Google (Funciona igual en Web y Tauri con el flujo de código) */}
-                <button 
-                  disabled={inProgress !== InteractionStatus.None} 
-                  onClick={handleGoogleLogin} 
-                  className="login-button google-button"
-                  style={{ backgroundColor: '#DB4437' }}
-                >
-                  Iniciar Sesión con Google
-                </button>
-
-                {/* Botón 2: Microsoft Corporativo (Su actual Entra ID) */}
-                <button 
-                  disabled={inProgress !== InteractionStatus.None || (isTauri && !isMsalTauriReady)} 
-                  onClick={handleMicrosoftCorpLogin} 
-                  className="login-button microsoft-corp-button"
-                  style={{ backgroundColor: '#0078D4' }}
-                >
-                  Iniciar Sesión con Microsoft 365 (Empresa)
-                </button>
-                
-                 {/* Botón 3: Microsoft Personal (MSA) */}
-                <button 
-                  disabled={inProgress !== InteractionStatus.None || (isTauri && !isMsalTauriReady)} 
-                  onClick={handleMicrosoftPersonalLogin} 
-                  className="login-button microsoft-personal-button"
-                  style={{ backgroundColor: '#FFB900' }}
-                >
-                  Iniciar Sesión con Cuenta Personal
-                </button>
-            </div>
+            <button 
+                disabled={inProgress !== InteractionStatus.None} 
+                onClick={handleB2CLogin} 
+                className="login-button b2c-button"
+                style={{ backgroundColor: '#0078D4' }} // Color de Microsoft
+            >
+                Iniciar Sesión con RIY Clientes
+            </button>
         );
     };
 
@@ -114,7 +78,7 @@ export const LoginPage: React.FC<LoginPageProps> = () => {
                 <h2>Bienvenido a RIY-DATOS</h2>
                 <p>Selecciona tu método de autenticación:</p>
                 
-                {renderLoginButtons()}
+                {renderLoginButton()}
 
                 {/* Bloque de Cierre de Sesión y Emergencia (Mantenemos la solución de emergencia) */}
                 {/* ... (Puede mantener el bloque de emergencia si lo considera necesario) ... */}

@@ -1,6 +1,4 @@
-// shared_lib/src/utils.rs
-
-use jsonwebtoken::{encode, EncodingKey, Header};
+use jsonwebtoken::{encode, EncodingKey, Header, Algorithm};
 use chrono::{Utc, Duration};
 use anyhow::{Result, anyhow};
 use sqlx::{Pool, Mssql};
@@ -34,11 +32,11 @@ pub async fn get_permissions_by_app(
     
     let permissions = if usuario_admin {
         vec![
-             "inicio".to_string(),
-             "administracion".to_string(),
-             "lista_usuarios".to_string(),
-             "agregar_usuario".to_string(),
-             // ... etc.
+            "inicio".to_string(),
+            "administracion".to_string(),
+            "lista_usuarios".to_string(),
+            "agregar_usuario".to_string(),
+            // ... etc.
         ]
     } else {
         // Permisos básicos para el resto
@@ -58,20 +56,22 @@ pub async fn get_permissions_by_app(
  * 🚨 Retorna un String (el JWT) para ser usado en el AuthResponsePayload.
  */
 pub fn generate_jwt(
-    // 🚨 CORRECCIÓN: AÑADIR LoggedInUser
     logged_in_user: &LoggedInUser,
-
     permissions: Vec<String>, 
     jwt_secret: &str
 ) -> Result<String> {
 
     // 1. Crea la carga útil (claims) del JWT usando el struct de tu middleware.
     // Usamos el campo 'usuario' (username) como 'sub' (subject).
-    // 🚨 CORRECCIÓN 🚨: Desenvuelve de forma segura el Option<String>
-    let user_sub = logged_in_user.usuario.as_ref()
-        .ok_or_else(|| anyhow::anyhow!("Error interno: el campo 'usuario' es nulo y es requerido para el JWT."))?
-        .clone();
 
+    // 🏆 CORRECCIÓN E0599: 
+    // Dado que el error nos indica que logged_in_user.usuario.clone() es un String, 
+    // removemos el método .ok_or_else() ya que no es aplicable a un tipo no-Option/Result.
+    // Simplemente clonamos el String que es obligatorio para el JWT.
+    //let user_sub = logged_in_user.usuario.clone();
+    let user_sub = logged_in_user.usuario.clone()
+        .expect("El campo 'usuario' (username) es nulo en LoggedInUser, lo cual es obligatorio para generar el JWT.");
+    // Esto toma el valor `String` dentro del `Option` y lo desempaca, corrigiendo el error de tipos. Si por alguna razón la base de datos devuelve un `LoggedInUser` sin nombre de usuario (`usuario: None`), el programa entrará en pánico con un mensaje útil, lo cual es la mejor forma de manejar un error de datos críticos en este contexto.
     let claims = Claims {
         sub: user_sub, // 👈 Ahora es un String garantizado
         permissions,
@@ -81,10 +81,12 @@ pub fn generate_jwt(
     
     // 2. Codifica el token.
     let token = encode(
-        &Header::default(), 
+        // Aseguramos que se usa el algoritmo HS256
+        &Header::new(Algorithm::HS256), 
         &claims, 
         &EncodingKey::from_secret(jwt_secret.as_bytes())
     ).map_err(|e| anyhow!("Error al crear el token: {}", e))?;
 
     Ok(token)
 }
+
